@@ -1,6 +1,6 @@
 export const hierarquiasGoetia = {
   "Entidades Maiores": [
-    { name: "Lúcifer", title: "Imperador", description: "O portador da luz, a inteligência suprema e guia da evolução espiritual.", image: "/images/symbol_flame.png" },
+    { name: "Lúcifer", title: "Entidade Maior", description: "O portador da luz, a inteligência suprema e guia da evolução espiritual.", image: "/images/symbol_flame.png" },
     { name: "Lilith", title: "Rainha da Noite", description: "A força da independência, do poder feminino e dos mistérios ocultos.", image: "/images/symbol_flame.png" },
     { name: "Astaroth", title: "Grão-Duque", description: "Mestre das artes liberais e conhecedor de todos os segredos do passado e futuro.", image: "/images/symbol_flame.png" },
   ],

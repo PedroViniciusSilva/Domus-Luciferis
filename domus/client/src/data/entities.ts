@@ -1,31 +1,27 @@
-// Importação da Trindade (Certifique-se que os arquivos .ts existam na pasta daemons)
 import { lucifer } from "./daemons/lucifer";
-import { lilith } from "./daemons/lilith";
-import { astarothTrindade } from "./daemons/astaroth"; // Nome do arquivo na imagem é astaroth.ts
 
-// Importação da Goetia
-import { bael } from "./daemons/bael";
-
-// Definição da Interface
+// 1. A Interface deve bater exatamente com os campos do lucifer.ts
 export interface Entity {
   slug: string;
   id: number;
   name: string;
-  category: "Trindade" | "Reis" | "Duques" | "Príncipes" | "Marqueses" | "Presidentes" | "Condes" | "Cavaleiros";
+  // Ajustei a categoria para "Entidade Maior" conforme você mudou
+  category: "Entidade Maior" | "Reis" | "Duques" | "Príncipes" | "Marqueses" | "Presidentes" | "Condes" | "Cavaleiros";
   title: string;
   area: string;
-  history: string;
-  cultivation: string;
-  bestDays: string;
-  powers: string[];
+  enn: string;
+  planeta: string;
+  elemento: string;
+  metal: string;
+  incenso: string;
+  melhoresDias: string;
+  legioes: string;
+  historia: string;
+  poderes: string[];
   image: string;
 }
 
-// Exportação da lista completa
+// 2. Como você deletou os outros, a lista deve conter APENAS o lucifer agora
 export const allEntities: Entity[] = [
-  lucifer,
-  lilith,
-  astarothTrindade,
-  bael,
-  
+  lucifer
 ];

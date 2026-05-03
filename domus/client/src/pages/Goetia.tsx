@@ -4,7 +4,7 @@ import { Link } from "wouter"; // Importação essencial para navegação
 import { allEntities } from "@/data/entities";
 
 export default function Goetia() {
-  const categorias = ["Trindade", "Reis", "Duques", "Príncipes", "Marqueses", "Presidentes", "Condes", "Cavaleiros"];
+  const categorias = ["Entidade Maior", "Reis", "Duques", "Príncipes", "Marqueses", "Presidentes", "Condes", "Cavaleiros"];
 
   return (
     <div className="container mx-auto px-4 py-16">
@@ -17,7 +17,7 @@ export default function Goetia() {
         </p>
       </header>
 
-      <Tabs defaultValue="Trindade" className="w-full">
+      <Tabs defaultValue="Entidade Maior" className="w-full">
         <div className="flex justify-center mb-10">
           <TabsList className="bg-zinc-900/50 border border-primary/20 h-auto flex-wrap justify-center p-2">
             {categorias.map((cat) => (
