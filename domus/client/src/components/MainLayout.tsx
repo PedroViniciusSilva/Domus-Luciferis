@@ -25,16 +25,30 @@ export default function MainLayout({ children }: MainLayoutProps) {
             </div>
           </Link>
           
-          <nav className="hidden md:flex items-center gap-8">
-            <a href="#historia" className="text-sm tracking-widest hover:text-primary transition-colors duration-300 uppercase">Nossa História</a>
-            <a href="#missao" className="text-sm tracking-widest hover:text-primary transition-colors duration-300 uppercase">Missão</a>
-            <a href="#contato" className="text-sm tracking-widest hover:text-primary transition-colors duration-300 uppercase">Contato</a>
+          {/* Menu Principal Atualizado */}
+          <nav className="hidden md:flex items-center gap-6">
+            <Link href="/rituais">
+              <a className="text-xs tracking-widest hover:text-primary transition-colors duration-300 uppercase">Rituais</a>
+            </Link>
+            <Link href="/produtos">
+              <a className="text-xs tracking-widest hover:text-primary transition-colors duration-300 uppercase">Produtos</a>
+            </Link>
+            <Link href="/goetia">
+              <a className="text-xs tracking-widest hover:text-primary transition-colors duration-300 uppercase">Goetia</a>
+            </Link>
+            <Link href="/membros">
+              <a className="text-xs tracking-widest hover:text-primary transition-colors duration-300 uppercase">Membros</a>
+            </Link>
+            
+            <div className="h-4 w-[1px] bg-primary/20 mx-2" /> {/* Divisor visual */}
+
+            
             <a 
               href="https://chat.whatsapp.com/HhpYGYoCqkdDSrTpayzUjc" 
               target="_blank" 
               rel="noopener noreferrer"
             >
-              <Button variant="outline" className="border-primary text-primary hover:bg-primary hover:text-black font-cinzel tracking-wider">
+              <Button variant="outline" size="sm" className="border-primary text-primary hover:bg-primary hover:text-black font-cinzel tracking-wider text-xs">
                 Junte-se a Nós
               </Button>
             </a>

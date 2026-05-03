@@ -4,32 +4,39 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import Home from "./pages/Home";
 
+// Imports Reais
+import Home from "./pages/Home";
+import Rituals from "./pages/Rituals";
+import Shop from "./pages/Shop";
+import Goetia from "./pages/Goetia";
+import Members from "./pages/Members";
+import EntityDetail from "./pages/EntityDetail"; // Página de detalhes que você vai criar
 
 function Router() {
   return (
     <Switch>
-      <Route path={"/"} component={Home} />
-      <Route path={"/404"} component={NotFound} />
-      {/* Final fallback route */}
+      <Route path="/" component={Home} />
+      
+      {/* Rotas principais */}
+      <Route path="/rituais" component={Rituals} />
+      <Route path="/produtos" component={Shop} />
+      <Route path="/goetia" component={Goetia} />
+      <Route path="/membros" component={Members} />
+
+      {/* ROTA DINÂMICA: Essencial para abrir a tela completa de cada Daemon */}
+      <Route path="/goetia/:slug" component={EntityDetail} />
+
+      <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
   );
 }
 
-// NOTE: About Theme
-// - First choose a default theme according to your design style (dark or light bg), than change color palette in index.css
-//   to keep consistent foreground/background color across components
-// - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
-
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider
-        defaultTheme="light"
-        // switchable
-      >
+      <ThemeProvider defaultTheme="dark">
         <TooltipProvider>
           <Toaster />
           <Router />
