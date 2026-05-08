@@ -1,4 +1,8 @@
 import { lucifer } from "./daemons/lucifer";
+import { astarothTrindade } from "./daemons/astaroth";
+import { lilith } from "./daemons/lilith";
+import { belzebub } from "./daemons/belzebub.ts";
+
 
 // 1. A Interface deve bater exatamente com os campos do lucifer.ts
 export interface Entity {
@@ -23,5 +27,8 @@ export interface Entity {
 
 // 2. Como você deletou os outros, a lista deve conter APENAS o lucifer agora
 export const allEntities: Entity[] = [
-  lucifer
+  lucifer,
+  astarothTrindade,
+  lilith,
+  belzebub
 ];
