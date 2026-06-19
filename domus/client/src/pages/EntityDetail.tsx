@@ -39,7 +39,7 @@ export default function EntityDetail() {
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           
-          {/* Coluna da Esquerda: Dados Técnicos */}
+          {/* Coluna da Esquerda: Dados Técnicos e Sigilo */}
           <div className="space-y-6">
             <Card className="bg-zinc-900/50 border-primary/10">
               <CardContent className="p-6 space-y-4">
@@ -56,10 +56,32 @@ export default function EntityDetail() {
               </CardContent>
             </Card>
 
+            {/* Bloco Exclusivo do Sigilo da Entidade */}
+            <Card className="bg-zinc-900/50 border-primary/10 overflow-hidden">
+              <CardContent className="p-6 flex flex-col items-center justify-center space-y-4">
+                <h3 className="font-cinzel text-primary border-b border-primary/20 pb-2 uppercase text-sm w-full text-center">
+                  Sigilo Sagrado
+                </h3>
+                <div className="relative w-48 h-48 bg-zinc-950/80 rounded-lg p-4 border border-primary/20 flex items-center justify-center group backdrop-blur-sm">
+                  <img 
+                    src={entity.sigil} 
+                    alt={`Sigilo de ${entity.name}`}
+                    className="max-w-full max-h-full object-contain block opacity-90 invert tracking-widest group-hover:opacity-100 transition-opacity duration-300"
+                    onError={(e) => {
+                      // Fallback dinâmico caso a rota do Vite adicione query strings
+                      const target = e.target as HTMLImageElement;
+                      if (!target.src.includes("?retry")) {
+                        target.src = `/images/sigils/${entity.slug}.png?retry=1`;
+                      }
+                    }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
             <div className="space-y-2">
               <h3 className="font-cinzel text-primary uppercase text-sm">Atribuições e Poderes</h3>
               <div className="flex flex-wrap gap-2">
-                {/* O erro do .map era aqui. Adicionamos o '?' para segurança */}
                 {entity.poderes?.map((poder) => (
                   <Badge key={poder} variant="secondary" className="bg-primary/5 text-primary border-primary/20">
                     {poder}

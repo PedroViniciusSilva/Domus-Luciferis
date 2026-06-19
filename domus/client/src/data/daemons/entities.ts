@@ -94,83 +94,41 @@ export interface Entity {
   historia: string;
   poderes: string[];
   image: string;
+  sigil: string;
 }
 
-// 2. Como você deletou os outros, a lista deve conter APENAS o lucifer agora
-export const allEntities: Entity[] = [
-  lucifer,
-  lilith,
-  belzebub,
-  bael,
-  agares,
-  vassago,
-  samigina,
-  marbas,
-  valefor,
-  amon,
-  barbatos,
-  paimon,
-  buer,
-  gusion,
-  sitri,
-  beleth,
-  leraje,
-  eligos,
-  zepar,
-  botis,
-  bathin,
-  saleos,
-  purson,
-  marax,
-  ipos,
-  aim,
-  naberius,
-  glasyalabolas,
-  bune,
-  ronove,
-  berith,
-  astaroth,
-  forneus,
-  foras,
-  asmoday,
-  gaap,
-  furfur,
-  marchosias,
-  stolas,
-  phenex,
-  halphas,
-  malphas,
-  raum,
-  focalor,
-  vepar,
-  sabnock,
-  shax,
-  vine,
-  bifrons,
-  vual,
-  hagenti, 
-  crocell,
-  furcas,
-  balam,
-  alloces,
-  camio,
-  murmur,
-  orobas,
-  gremory,
-  ose,
-  amy,
-  orias,
-  vapula,
-  zagan,
-  valac,
-  andras,
-  haures,
-  andrealphus,
-  cimeies,
-  amdusias,
-  belial,
-  decarabia,
-  seere,
-  dantalion,
-  andromalius
+export interface Entity {
+  slug: string;
+  id: number;
+  name: string;
+  category: "Entidade Maior" | "Reis" | "Duques" | "Príncipes" | "Marqueses" | "Presidentes" | "Condes" | "Cavaleiros";
+  title: string;
+  area: string;
+  enn: string;
+  planeta: string;
+  elemento: string;
+  metal: string;
+  incenso: string;
+  melhoresDias: string;
+  legioes: string;
+  historia: string;
+  poderes: string[];
+  image: string;
+  sigil: string; 
+}
+
+const rawEntities = [
+  lucifer, lilith, belzebub, bael, agares, vassago, samigina, marbas, valefor, amon,
+  barbatos, paimon, buer, gusion, sitri, beleth, leraje, eligos, zepar, botis,
+  bathin, saleos, purson, marax, ipos, aim, naberius, glasyalabolas, bune, ronove,
+  berith, astaroth, forneus, foras, asmoday, gaap, furfur, marchosias, stolas, phenex,
+  halphas, malphas, raum, focalor, vepar, sabnock, shax, vine, bifrons, vual,
+  hagenti, crocell, furcas, balam, alloces, camio, murmur, orobas, gremory, ose,
+  amy, orias, vapula, zagan, valac, andras, haures, andrealphus, cimeies, amdusias,
+  belial, decarabia, seere, dantalion, andromalius
 ];
+
+export const allEntities: Entity[] = rawEntities.map((daemon) => ({
+  ...daemon,
+  sigil: `/images/sigils/${daemon.slug}.png`
+}));
