@@ -55,16 +55,24 @@ export default function Goetia() {
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="text-center">
-                          <div className="mb-4 flex justify-center">
+                          
+                          {/* BLOCO CENTRAL: EXIBIÇÃO PADRONIZADA DO SIGILO AMPLIA DO */}
+                          <div className="mb-6 flex justify-center items-center h-36 w-full relative">
                             <img 
-                              src={entidade.image} 
-                              alt={entidade.name} 
-                              className="h-24 w-24 object-contain opacity-50 group-hover:opacity-100 grayscale group-hover:grayscale-0 transition-all"
-                              onError={(e) => e.currentTarget.src = "/images/symbol_flame.png"}
+                              src={entidade.sigil} 
+                              alt={`Sigilo de ${entidade.name}`} 
+                              className="h-full max-w-[85%] object-contain opacity-70 group-hover:opacity-100 invert transition-all duration-300 group-hover:scale-105"
+                              onError={(e) => {
+                                // Caso o sigilo ainda não exista na pasta, carrega a chama padrão
+                                e.currentTarget.src = "/images/symbol_flame.png";
+                                // Remove o filtro 'invert' na chama para manter a cor original dela
+                                e.currentTarget.classList.remove('invert');
+                              }}
                             />
                           </div>
-                          <p className="text-[10px] text-primary uppercase tracking-tighter mb-2 font-bold">{entidade.area}</p>
-                          <p className="text-xs text-muted-foreground italic">
+                          
+                          <p className="text-[10px] text-primary uppercase tracking-tighter mb-2 font-bold px-2 line-clamp-1">{entidade.area}</p>
+                          <p className="text-xs text-muted-foreground italic group-hover:text-primary transition-colors">
                             Ver grimório completo
                           </p>
                         </CardContent>
