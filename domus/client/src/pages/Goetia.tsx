@@ -1,7 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "wouter"; // Importação essencial para navegação
-import { allEntities } from "@/data/entities";
+import { allEntities } from "@/data/daemons/entities";
 
 export default function Goetia() {
   const categorias = ["Entidade Maior", "Reis", "Duques", "Príncipes", "Marqueses", "Presidentes", "Condes", "Cavaleiros"];

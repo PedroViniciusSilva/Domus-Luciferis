@@ -1,30 +1,29 @@
-import { Entity } from "../entities";
+import { Entity } from "./entities";
 
-export const astarothTrindade: Entity = {
-  slug: "astaroth-maior",
-  id: 0,
+export const astaroth: Entity = {
+  slug: "astaroth",
+  id: 29,
   name: "Astaroth",
-  category: "Entidade Maior",
-  title: "Grão-Duque / Tesoureiro do Inferno",
-  area: "Conhecimento, Tempo e Verdade",
-  enn: "Tasa Alora Astaroth Adai",
+  category: "Duques",
+  title: "Grande Duque / O Tesoureiro do Submundo e Senhor da Gnose",
+  area: "Sabedoria Oculta, Ciências Liberais, Revelação de Segredos e Discernimento",
+  enn: "Tasa alora Larson Astaroth",
   planeta: "Vênus",
   elemento: "Terra",
   metal: "Cobre",
-  incenso: "Sândalo ou Benjoim",
-  melhoresDias: "sexta-feira",
-  legioes: "40 Legiões",
-  historia: `O nome Astaroth é derivado da deusa fenícia Astarte, um equivalente da babilônica Ishtar e da suméria Inana. Ele é mencionado na Bíblia Hebraica nas formas Ashtoreth (singular) e Ashtaroth (plural, em referência a várias estátuas dele). Esta última forma foi diretamente transliterado nas versões grega e latina antigas da Bíblia, onde era menos evidente que ele tinha sido um plural feminino em hebraico. 
-Representa a mente analítica e o equilíbrio emocional necessário para lidar com grandes responsabilidades. É considerado um dos conselheiros mais próximos de Lúcifer, auxiliando na organização intelectual das legiões infernais e no ensino de artes liberais e ciências aos buscadores da luz.
+  incenso: "Sândalo",
+  melhoresDias: "Sexta-feira",
+  legioes: "40 Legiões de Espíritos Infernais",
+  historia: `Astaroth é o vigésimo nono espírito da Goetia, considerado um dos Grão-Duques mais poderosos do inferno, compondo muitas vezes a trindade principal ao lado de Lúcifer e Belzebu. Ele se manifesta como um anjo ferino ou uma figura imponente montada sobre um dragão infernal, carregando uma víbora em sua mão esquerda. Sua energia é densa, intelectual e profundamente transformadora.
 
-Astaroth é o 29º espírito da Ars Goetia, descrito como um Grão-Duque poderoso e influente que comanda 40 legiões. Ele é retratado como um anjo de aparência "medonha" ou "nociva", montado em um dragão e guardião de segredos sobre o passado, presente e futuro, além de ensinar ciências liberais.`,
+Na perspectiva luciferiana, Astaroth é o guardião do conhecimento proibido e das ciências liberais. Ele responde com absoluta verdade sobre o passado, o presente e o futuro, revelando como os espíritos caíram e as razões por trás de suas próprias rebeliões intelectuais. Ele destrói ilusões, rasga dogmas limitantes e instiga o magista a buscar a verdade através do questionamento e do estudo científico e filosófico.
 
-
+Trabalhar com Astaroth dota o magista de um discernimento afiado e uma mente científica. Ele auxilia na descoberta de segredos ocultos, no aprendizado de qualquer matéria acadêmica complexa e na compreensão das leis naturais do universo, sendo o mentor ideal para pesquisadores, filósofos e ocultistas dedicados à Grande Obra.`,
   poderes: [
-    "Revelação de verdades",
-    "Conhecimento histórico e profético",
-    "Auxílio em ciências e artes",
-    "Clareza mental"
+    "Revelação de verdades ocultas, segredos de terceiros e mistérios históricos",
+    "Auxílio no aprendizado acelerado de ciências liberais, matemática e filosofia",
+    "Destruição de ilusões mentais e clareza para tomadas de decisões críticas",
+    "Concessão de visões proféticas e entendimento de tendências futuras"
   ],
   image: "/images/astaroth_banner.jpg"
 };
