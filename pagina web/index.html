@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Página pessoal para apresentação profissional, currículo e projetos." />
+  <title>Seu Nome | Portfólio e Currículo</title>
+  <style>
+    :root {
+      --bg: #07111f;
+      --surface: #0f1b2d;
+      --surface-2: #16253b;
+      --text: #f3f7ff;
+      --muted: #aebed4;
+      --accent: #4fd1c5;
+      --accent-2: #7c93ff;
+      --border: rgba(255, 255, 255, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+      background: linear-gradient(135deg, var(--bg), #0b1324 70%, #101d32);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    img { max-width: 100%; display: block; }
+
+    .container {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    header {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 24px 0 60px;
+    }
+
+    nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0 30px;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      color: var(--muted);
+    }
+
+    .nav-links a:hover { color: var(--text); }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 32px;
+      align-items: center;
+      flex: 1;
+      padding: 24px 0;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 0.9rem;
+      color: var(--accent);
+      margin-bottom: 16px;
+      background: rgba(79, 209, 197, 0.08);
+    }
+
+    h1 {
+      font-size: clamp(2.2rem, 4vw, 3.7rem);
+      line-height: 1.1;
+      margin: 0 0 16px;
+    }
+
+    h1 span {
+      color: var(--accent);
+    }
+
+    .lead {
+      font-size: 1.06rem;
+      color: var(--muted);
+      max-width: 650px;
+      margin-bottom: 24px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+
+    .btn {
+      padding: 12px 18px;
+      border-radius: 999px;
+      font-weight: 600;
+      display: inline-block;
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+
+    .btn:hover { transform: translateY(-2px); }
+    .btn-primary { background: linear-gradient(90deg, var(--accent), var(--accent-2)); color: #04111c; }
+    .btn-secondary { border: 1px solid var(--border); background: rgba(255,255,255,0.03); }
+
+    .contact-list {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .panel {
+      padding: 24px;
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+      box-shadow: 0 20px 45px rgba(0,0,0,0.2);
+    }
+
+    .panel h3 {
+      margin-top: 0;
+      margin-bottom: 10px;
+      font-size: 1.1rem;
+    }
+
+    .panel p { margin: 0; color: var(--muted); }
+
+    section {
+      padding: 70px 0;
+    }
+
+    .section-title {
+      font-size: 1.7rem;
+      margin-bottom: 18px;
+    }
+
+    .section-text {
+      color: var(--muted);
+      max-width: 720px;
+      margin-bottom: 24px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 20px;
+    }
+
+    .two-col { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .three-col { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .card {
+      padding: 22px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.03);
+    }
+
+    .card h3 { margin: 0 0 8px; font-size: 1.1rem; }
+    .card p { margin: 0; color: var(--muted); }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .tag {
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(79, 209, 197, 0.12);
+      color: var(--accent);
+      font-size: 0.9rem;
+    }
+
+    .project-card {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 220px;
+    }
+
+    footer {
+      padding: 24px 0 40px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 0.95rem;
+    }
+
+    @media (max-width: 800px) {
+      .hero { grid-template-columns: 1fr; }
+      .two-col, .three-col { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header id="top">
+    <div class="container">
+      <nav>
+        <a class="brand" href="#top">Pedro Vinicius Pouzada Silva</a>
+        <div class="nav-links">
+          <a href="#sobre">Sobre</a>
+          <a href="#habilidades">Habilidades</a>
+          <a href="#projetos">Projetos</a>
+          <a href="#contato">Contato</a>
+        </div>
+      </nav>
+
+      <div class="hero">
+        <div>
+          <span class="badge">Disponível para novos desafios</span>
+          <h1>Olá, eu sou o <span>Pedro Vinicius</span></h1>
+          <p class="lead">
+            Sou um Desenvolvedor Full Stack apaixonado por criar soluções eficientes e interfaces dinâmicas. Com formação em Análise e Desenvolvimento
+            de Sistemas, estou construindo uma base técnica forte em linguagens modernas, estruturação de dados em catálogos web e gerenciamento de dados.
+            Minha transição de setores administrativos e financeiros para a TI me proporcionou uma visão de negócios diferenciada, focada em tratar dados para resolver problemas reais de mercado. 
+            Tenho experiência prática no desenvolvimento de sistemas utilizando tecnologias variadas como JavaScript, Python, Vue, Flutter Flow dentre outras.
+            Foco em construções em integração de APIs RESTful utilizando a arquitetura Spring Boot.
+            Buscando sempre aplicar metodologias ágeis e boas práticas para entregar um código limpo e de alto impacto.
+          </p>
+          <div class="actions">
+            <a class="btn btn-primary" href="#projetos">Ver projetos</a>
+            <a class="btn btn-secondary" href="#contato">Falar comigo</a>
+          </div>
+          <div class="contact-list">
+            <span>📧 viniciusinfo.silva@gmail.com</span>
+            <span>📍 Belo Horizonte - MG / Brasil</span>
+            <span>💼 https://github.com/PedroViniciusSilva</span>
+            <span>📊 https://www.linkedin.com/in/pedro-vinicius-silva/</span  >
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Resumo profissional</h3>
+          <p>Desenvolvedor Full Stack no último ano de Análise e Desenvolvimento de Sistemas (previsão de conclusão em 2026), 
+            com forte background analítico e visão de negócios.
+            A transição de setores administrativos e financeiros para a Tecnologia da Informação me ajudou a construir uma base sólida para a resolução de problemas reais de mercado, unindo inteligência de dados à criação de interfaces eficientes. Além
+            possuir um perfil investigativo e adaptável, com vivência prática em desenvolvimento e suporte de infraestrutura, navegando por um ecossistema tecnológico diversificado que inclui
+            TypeScript, Node.js, JavaScript, Python, PowerBi dentre outras tecnologias.
+            Atuando sempre com metodologias ágeis para uma melhor organização e desempenho.
+            Ao longo dessa caminhada obtive certificações focadas em processos e nuvem (Lean Six Sigma Green Belt e AWS), o foco atual está no aprendizado contínuo, na aplicação de boas práticas e na entrega de soluções de alto impacto.
+            
+          </p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="sobre">
+      <div class="container">
+        <h2 class="section-title">Sobre mim</h2>
+        <p class="section-text">
+          Estudante de Análise e Desenvolvimento de Sistemas com foco em tecnologias modernas como TypeScript,
+          React e Node.js. Experiência na transição de processos administrativos e financeiros para suporte em TI,
+          atuando no desenvolvimento e manutenção de infraestrutura e interfaces de usuário. Profissional adaptável,
+          com sólida base em bancos de dados e metodologias ágeis,buscando contribuir para o
+          desenvolvimento de soluções eficientes e inovadoras.
+        </p>
+        <div class="grid two-col">
+          <div class="card">
+            <h3>Formação</h3>
+            <p>Graduação em Análise e Desenvolvimento de Sistemas Estácio (Venda Nova, MG) | Previsão de conclusão: Dezembro/2026.</p>
+          </div>
+          <div class="card">
+            <h3>Objetivo profissional</h3>
+            <p>Quero construir uma experiência solida na aréa de tecnologia e desenvolver produtos digitais que resolvam problemas reais com design e tecnologia.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="habilidades">
+      <div class="container">
+        <h2 class="section-title">Habilidades</h2>
+        <p class="section-text">
+
+        </p>
+        <div class="grid three-col">
+          <div class="card">
+            <h3>Frontend</h3>
+           
+            <div class="tags">
+              <span class="tag">TypeScript</span>
+              <span class="tag">CSS</span>
+              <span class="tag">React</span>
+              <span class="tag">CSS</span>
+              <span class="tag">HTML</span>
+              <span class="tag">Vue.js</span>
+              <span class="tag">Angular</span>
+              <span class="tag">Flutter Flow</span>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Backend</h3>
+            <div class="tags">
+              <span class="tag">java/Spring Boot</span>
+              <span class="tag">Python</span>
+              <span class="tag">SQL</span>
+               <span class="tag">NoSQL</span>
+                <span class="tag">Node.js</span>
+
+            </div>
+          </div>
+          <div class="card">
+            <h3>Ferramentas</h3>
+            <div class="tags">
+              <span class="tag">AWS</span>
+              <span class="tag">GitHub</span>
+              <span class="tag">Docker</span>
+              <span class="tag">Jira/Trello</span>
+              <span class="tag">PowerBI</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="projetos">
+      <div class="container">
+        <h2 class="section-title">Projetos</h2>
+        <p class="section-text">
+          
+        </p>
+        <div class="grid three-col">
+          <div class="card project-card">
+            <div>
+              <h3>Site Domus Luciferis</h3>
+              <p>Site desenvolvido para apresentar os serviços e produtos da Domus Luciferis.</p>
+            </div>
+            <div class="tags">
+              <span class="tag">HTML</span>
+              <span class="tag">CSS</span>
+              <span class="tag">JavaScript</span>
+              <span class="tag">React</span>
+              <span class="tag">TypeScript</span>
+              <span class="tag">JSON</span>
+            </div>
+          </div>
+          <div class="card project-card">
+            <div>
+              <h3>Pagina Curricular</h3>
+              <p>Pagina desenvolvida para apresentar informações sobre minha formação e experiência profissional.</p>
+            </div>
+            <div class="tags">
+              <span class="tag">HTML</span>
+            </div>
+          </div>
+          <div class="card project-card">
+            <div>
+              <h3>API RESTful</h3>
+              <p>API RESTful desenvolvida para fornecer endpoints para gerenciamento de dados.</p>
+            </div>
+            <div class="tags">
+              <span class="tag">h2</span>
+              <span class="tag">NoSQL</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="contato">
+      <div class="container">
+        <h2 class="section-title">Contato</h2>
+        <p class="section-text">
+          Pronto para conversar? Envie uma mensagem e vamos trocar ideias sobre seu próximo projeto.
+        </p>
+        <div class="card">
+          <p><strong>E-mail:</strong> seuemail@email.com</p>
+          <p><strong>LinkedIn:</strong> linkedin.com/in/seuusuario</p>
+          <p><strong>GitHub:</strong> github.com/seuusuario</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">© 2026 Seu Nome. Todos os direitos reservados.</div>
+  </footer>
+</body>
+</html>
