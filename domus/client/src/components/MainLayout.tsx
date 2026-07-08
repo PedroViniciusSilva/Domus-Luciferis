@@ -30,7 +30,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             <Link href="/rituais" className="text-xs tracking-widest hover:text-primary transition-colors duration-300 uppercase">Rituais</Link>
             <Link href="/produtos" className="text-xs tracking-widest hover:text-primary transition-colors duration-300 uppercase">Produtos</Link>
             <Link href="/goetia" className="text-xs tracking-widest hover:text-primary transition-colors duration-300 uppercase">Goetia</Link>
-            <Link href="/membros" className="text-xs tracking-widest hover:text-primary transition-colors duration-300 uppercase">Membros</Link>
+            <Link href="/doacoes" className="text-xs tracking-widest hover:text-primary transition-colors duration-300 uppercase">Doações</Link>
             
             <div className="h-4 w-[1px] bg-primary/20 mx-2" /> {/* Divisor visual */}
 
