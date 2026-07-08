@@ -25,7 +25,7 @@ import { marax } from "./marax.ts";
 import { ipos } from "./ipos.ts";
 import { aim } from "./aim.ts";
 import { naberius } from "./naberius.ts";
-import { glasyalabolas } from "./glasyaLabolas.ts";
+import { glasyalabolas } from "./glasyalabolas.ts";
 import { bune } from "./bune.ts";
 import { ronove } from "./ronove.ts";
 import { berith } from "./berith.ts";
@@ -75,12 +75,11 @@ import { dantalion } from "./dantalion.ts";
 import { andromalius } from "./andromalius.ts";
 
 
-// 1. A Interface deve bater exatamente com os campos do lucifer.ts
-export interface Entity {
+// Interface para as entidades individuais (sem sigil, que é gerado dinamicamente)
+export interface RawEntity {
   slug: string;
   id: number;
   name: string;
-  // Ajustei a categoria para "Entidade Maior" conforme você mudou
   category: "Entidade Maior" | "Reis" | "Duques" | "Príncipes" | "Marqueses" | "Presidentes" | "Condes" | "Cavaleiros";
   title: string;
   area: string;
@@ -94,27 +93,11 @@ export interface Entity {
   historia: string;
   poderes: string[];
   image: string;
-  sigil: string;
 }
 
-export interface Entity {
-  slug: string;
-  id: number;
-  name: string;
-  category: "Entidade Maior" | "Reis" | "Duques" | "Príncipes" | "Marqueses" | "Presidentes" | "Condes" | "Cavaleiros";
-  title: string;
-  area: string;
-  enn: string;
-  planeta: string;
-  elemento: string;
-  metal: string;
-  incenso: string;
-  melhoresDias: string;
-  legioes: string;
-  historia: string;
-  poderes: string[];
-  image: string;
-  sigil: string; 
+// Interface final com sigil incluído
+export interface Entity extends RawEntity {
+  sigil: string;
 }
 
 const rawEntities = [

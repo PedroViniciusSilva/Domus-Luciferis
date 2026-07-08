@@ -1,6 +1,6 @@
-import { Entity } from "./entities";
+import { RawEntity } from "./entities";
 
-export const gaap: Entity = {
+export const gaap: RawEntity = {
   slug: "gaap",
   id: 33,
   name: "Gaap",

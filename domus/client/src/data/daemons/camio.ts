@@ -1,6 +1,6 @@
-import { Entity } from "./entities";
+import { RawEntity } from "./entities";
 
-export const camio: Entity = {
+export const camio: RawEntity = {
   slug: "camio",
   id: 53,
   name: "Camio",

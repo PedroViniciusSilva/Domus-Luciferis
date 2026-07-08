@@ -1,6 +1,6 @@
-import { Entity } from "./entities";
+import { RawEntity } from "./entities";
 
-export const focalor: Entity = {
+export const focalor: RawEntity = {
   slug: "focalor",
   id: 41,
   name: "Focalor",

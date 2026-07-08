@@ -1,10 +1,13 @@
-import { useRoute } from "wouter";
+import { useRoute, useLocation } from "wouter";
 import { allEntities } from "@/data/daemons/entities";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, Home } from "lucide-react";
 
 export default function EntityDetail() {
+  const [, setLocation] = useLocation();
   const [, params] = useRoute("/goetia/:slug");
   const entity = allEntities.find((e) => e.slug === params?.slug);
 
@@ -18,6 +21,30 @@ export default function EntityDetail() {
 
   return (
     <div className="min-h-screen bg-black text-zinc-200">
+      {/* Botão de Voltar e Home */}
+      <div className="container mx-auto px-4 pt-6">
+        <div className="flex gap-3 mb-6">
+          <Button 
+            onClick={() => window.history.back()} 
+            variant="ghost" 
+            size="sm" 
+            className="text-primary hover:bg-primary/10 border border-primary/20"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Voltar
+          </Button>
+          <Button 
+            onClick={() => setLocation('/')} 
+            variant="ghost" 
+            size="sm" 
+            className="text-primary hover:bg-primary/10 border border-primary/20"
+          >
+            <Home className="w-4 h-4 mr-2" />
+            Home
+          </Button>
+        </div>
+      </div>
+
       {/* Banner Principal */}
       <div className="relative h-[40vh] w-full overflow-hidden border-b border-primary/20">
         <img 
