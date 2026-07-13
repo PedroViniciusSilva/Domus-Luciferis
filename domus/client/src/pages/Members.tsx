@@ -227,7 +227,7 @@ export default function Members() {
           <Card className="border-primary/10 bg-zinc-950/80">
             <CardHeader>
               <CardTitle className="font-cinzel text-2xl text-primary">
-                Cadastro do cliente
+                Cadastro de doação
               </CardTitle>
             </CardHeader>
             <CardContent>

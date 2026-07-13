@@ -14,6 +14,7 @@ import Goetia from "./pages/Goetia";
 import Donations from "./pages/Members";
 import AdminDonations from "./pages/AdminDonations";
 import EntityDetail from "./pages/EntityDetail"; // Página de detalhes que você vai criar
+import Presentation from "./pages/Presentation";
 
 function LegacyMembersRedirect() {
   const [, setLocation] = useLocation();
@@ -35,6 +36,7 @@ function Router() {
       <Route path="/produtos" component={Shop} />
       <Route path="/goetia" component={Goetia} />
       <Route path="/doacoes" component={Donations} />
+      <Route path="/apresentacao" component={Presentation} />
       <Route path="/membros" component={LegacyMembersRedirect} />
       <Route path="/admin/doacoes" component={AdminDonations} />
 
