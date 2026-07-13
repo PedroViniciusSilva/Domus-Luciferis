@@ -10,13 +10,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, Download, Home, LockKeyhole, RefreshCw } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import {
+  ArrowLeft,
+  Download,
+  Edit3,
+  Home,
+  LockKeyhole,
+  RefreshCw,
+  Save,
+  Trash2,
+  X,
+} from "lucide-react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 
 type DonationRecord = {
   id: string;
   createdAt: string;
+  updatedAt?: string;
   fullName: string;
   phone: string;
   email: string;
@@ -29,7 +40,74 @@ type DonationRecord = {
   };
 };
 
+type DonationForm = {
+  fullName: string;
+  phone: string;
+  email: string;
+  cpf: string;
+  street: string;
+  number: string;
+  neighborhood: string;
+  city: string;
+};
+
 const adminTokenKey = "domus-admin-token";
+const defaultAdminToken = import.meta.env.DEV ? "domus-dev-admin" : "";
+
+const emptyForm: DonationForm = {
+  fullName: "",
+  phone: "",
+  email: "",
+  cpf: "",
+  street: "",
+  number: "",
+  neighborhood: "",
+  city: "",
+};
+
+const onlyDigits = (value: string) => value.replace(/\D/g, "");
+
+function formatCpf(value: string) {
+  return onlyDigits(value)
+    .slice(0, 11)
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+}
+
+function formatPhone(value: string) {
+  const digits = onlyDigits(value).slice(0, 11);
+
+  if (digits.length <= 10) {
+    return digits
+      .replace(/(\d{2})(\d)/, "($1) $2")
+      .replace(/(\d{4})(\d)/, "$1-$2");
+  }
+
+  return digits
+    .replace(/(\d{2})(\d)/, "($1) $2")
+    .replace(/(\d{5})(\d)/, "$1-$2");
+}
+
+function isValidCpf(value: string) {
+  const cpf = onlyDigits(value);
+
+  if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) {
+    return false;
+  }
+
+  const calculateDigit = (factor: number) => {
+    const total = cpf
+      .slice(0, factor - 1)
+      .split("")
+      .reduce((sum, digit, index) => sum + Number(digit) * (factor - index), 0);
+    const result = (total * 10) % 11;
+
+    return result === 10 ? 0 : result;
+  };
+
+  return calculateDigit(10) === Number(cpf[9]) && calculateDigit(11) === Number(cpf[10]);
+}
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -58,14 +136,37 @@ async function readJsonResponse<T>(response: Response) {
 export default function AdminDonations() {
   const [, setLocation] = useLocation();
   const [adminToken, setAdminToken] = useState(
-    () => sessionStorage.getItem(adminTokenKey) || ""
+    () => sessionStorage.getItem(adminTokenKey) || defaultAdminToken
   );
   const [tokenInput, setTokenInput] = useState(adminToken);
   const [donations, setDonations] = useState<DonationRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<DonationForm>(emptyForm);
+  const [formError, setFormError] = useState("");
 
   const isAuthenticated = adminToken.length > 0;
+  const editingDonation = useMemo(
+    () => donations.find((donation) => donation.id === editingId) || null,
+    [donations, editingId]
+  );
+
+  const editErrors = useMemo(() => {
+    return {
+      fullName: form.fullName.trim().split(/\s+/).length < 2,
+      phone: onlyDigits(form.phone).length < 10,
+      email: !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email),
+      cpf: !isValidCpf(form.cpf),
+      street: form.street.trim().length < 3,
+      number: form.number.trim().length < 1,
+      neighborhood: form.neighborhood.trim().length < 2,
+      city: form.city.trim().length < 2,
+    };
+  }, [form]);
+
+  const isEditValid = !Object.values(editErrors).some(Boolean);
 
   async function loadDonations(token = adminToken) {
     if (!token) {
@@ -109,7 +210,6 @@ export default function AdminDonations() {
     const token = tokenInput.trim();
     sessionStorage.setItem(adminTokenKey, token);
     setAdminToken(token);
-    loadDonations(token);
   }
 
   function handleLogout() {
@@ -118,6 +218,125 @@ export default function AdminDonations() {
     setTokenInput("");
     setDonations([]);
     setError("");
+    setEditingId(null);
+    setForm(emptyForm);
+    setFormError("");
+  }
+
+  function startEditing(donation: DonationRecord) {
+    setEditingId(donation.id);
+    setForm({
+      fullName: donation.fullName,
+      phone: donation.phone,
+      email: donation.email,
+      cpf: donation.cpf,
+      street: donation.address.street,
+      number: donation.address.number,
+      neighborhood: donation.address.neighborhood,
+      city: donation.address.city,
+    });
+    setFormError("");
+    setError("");
+  }
+
+  function cancelEditing() {
+    setEditingId(null);
+    setForm(emptyForm);
+    setFormError("");
+  }
+
+  function updateField(field: keyof DonationForm, value: string) {
+    const nextValue =
+      field === "cpf" ? formatCpf(value) : field === "phone" ? formatPhone(value) : value;
+
+    setForm((current) => ({ ...current, [field]: nextValue }));
+    setFormError("");
+    setError("");
+  }
+
+  async function saveDonation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!editingId || !isEditValid) {
+      setFormError("Verifique os campos do cadastro antes de salvar.");
+      return;
+    }
+
+    setSaving(true);
+    setFormError("");
+    setError("");
+
+    try {
+      const response = await fetch(`/api/admin/donations/${editingId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${adminToken}`,
+        },
+        body: JSON.stringify({
+          fullName: form.fullName,
+          phone: form.phone,
+          email: form.email,
+          cpf: form.cpf,
+          address: {
+            street: form.street,
+            number: form.number,
+            neighborhood: form.neighborhood,
+            city: form.city,
+          },
+        }),
+      });
+      const data = await readJsonResponse<{ message?: string }>(response);
+
+      if (!response.ok) {
+        throw new Error(data.message || "Não foi possível atualizar o cadastro.");
+      }
+
+      cancelEditing();
+      await loadDonations(adminToken);
+    } catch (error) {
+      setFormError(
+        error instanceof Error ? error.message : "Não foi possível atualizar o cadastro."
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteDonation(donation: DonationRecord) {
+    const confirmed = window.confirm(
+      `Excluir o cadastro de ${donation.fullName}? Esta ação não pode ser desfeita.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setError("");
+
+    try {
+      const response = await fetch(`/api/admin/donations/${donation.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+        },
+      });
+      const data = await readJsonResponse<{ message?: string }>(response);
+
+      if (!response.ok) {
+        throw new Error(data.message || "Não foi possível excluir o cadastro.");
+      }
+
+      if (editingId === donation.id) {
+        cancelEditing();
+      }
+
+      await loadDonations(adminToken);
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : "Não foi possível excluir o cadastro."
+      );
+    }
   }
 
   async function exportCsv() {
@@ -155,7 +374,7 @@ export default function AdminDonations() {
     if (adminToken) {
       loadDonations(adminToken);
     }
-  }, []);
+  }, [adminToken]);
 
   return (
     <div className="container mx-auto px-4 py-16">
@@ -264,21 +483,149 @@ export default function AdminDonations() {
                 </div>
               )}
 
+              {editingDonation && (
+                <Card className="mb-6 border-primary/10 bg-black/20">
+                  <CardHeader className="gap-4 md:flex md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <CardTitle className="font-cinzel text-xl text-primary">
+                        Editar cadastro
+                      </CardTitle>
+                      <p className="mt-2 text-sm text-zinc-400">
+                        Alterando: {editingDonation.fullName}
+                      </p>
+                    </div>
+                    <Button type="button" variant="ghost" onClick={cancelEditing}>
+                      <X className="mr-2 h-4 w-4" />
+                      Cancelar
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    <form className="space-y-5" onSubmit={saveDonation} noValidate>
+                      <div className="space-y-2">
+                        <Label htmlFor="fullName">Nome completo</Label>
+                        <Input
+                          id="fullName"
+                          value={form.fullName}
+                          onChange={(event) => updateField("fullName", event.target.value)}
+                          className="h-11 border-primary/20 bg-black/30"
+                        />
+                      </div>
+
+                      <div className="grid gap-5 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="phone">Telefone</Label>
+                          <Input
+                            id="phone"
+                            value={form.phone}
+                            onChange={(event) => updateField("phone", event.target.value)}
+                            className="h-11 border-primary/20 bg-black/30"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="email">E-mail</Label>
+                          <Input
+                            id="email"
+                            value={form.email}
+                            onChange={(event) => updateField("email", event.target.value)}
+                            className="h-11 border-primary/20 bg-black/30"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid gap-5 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="cpf">CPF</Label>
+                          <Input
+                            id="cpf"
+                            value={form.cpf}
+                            onChange={(event) => updateField("cpf", event.target.value)}
+                            className="h-11 border-primary/20 bg-black/30"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="number">Número</Label>
+                          <Input
+                            id="number"
+                            value={form.number}
+                            onChange={(event) => updateField("number", event.target.value)}
+                            className="h-11 border-primary/20 bg-black/30"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="street">Rua</Label>
+                        <Input
+                          id="street"
+                          value={form.street}
+                          onChange={(event) => updateField("street", event.target.value)}
+                          className="h-11 border-primary/20 bg-black/30"
+                        />
+                      </div>
+
+                      <div className="grid gap-5 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="neighborhood">Bairro</Label>
+                          <Input
+                            id="neighborhood"
+                            value={form.neighborhood}
+                            onChange={(event) => updateField("neighborhood", event.target.value)}
+                            className="h-11 border-primary/20 bg-black/30"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="city">Cidade</Label>
+                          <Input
+                            id="city"
+                            value={form.city}
+                            onChange={(event) => updateField("city", event.target.value)}
+                            className="h-11 border-primary/20 bg-black/30"
+                          />
+                        </div>
+                      </div>
+
+                      {formError && (
+                        <div className="rounded-md border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-200">
+                          {formError}
+                        </div>
+                      )}
+
+                      <div className="flex flex-wrap gap-3">
+                        <Button
+                          type="submit"
+                          disabled={saving || !isEditValid}
+                          className="bg-primary font-cinzel text-black hover:bg-white"
+                        >
+                          <Save className="mr-2 h-4 w-4" />
+                          {saving ? "Salvando..." : "Salvar alterações"}
+                        </Button>
+                        <Button type="button" variant="outline" onClick={cancelEditing}>
+                          Cancelar
+                        </Button>
+                      </div>
+                    </form>
+                  </CardContent>
+                </Card>
+              )}
+
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Data</TableHead>
+                    <TableHead>Atualização</TableHead>
                     <TableHead>Nome</TableHead>
                     <TableHead>Telefone</TableHead>
                     <TableHead>E-mail</TableHead>
                     <TableHead>CPF</TableHead>
                     <TableHead>Endereço</TableHead>
+                    <TableHead>Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {donations.map((donation) => (
                     <TableRow key={donation.id}>
                       <TableCell>{formatDate(donation.createdAt)}</TableCell>
+                      <TableCell>{formatDate(donation.updatedAt || donation.createdAt)}</TableCell>
                       <TableCell>{donation.fullName}</TableCell>
                       <TableCell>{donation.phone}</TableCell>
                       <TableCell>{donation.email}</TableCell>
@@ -287,12 +634,35 @@ export default function AdminDonations() {
                         {donation.address.street}, {donation.address.number} -{" "}
                         {donation.address.neighborhood}, {donation.address.city}
                       </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => startEditing(donation)}
+                            className="border-primary/30 text-primary hover:bg-primary hover:text-black"
+                          >
+                            <Edit3 className="mr-2 h-4 w-4" />
+                            Editar
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => deleteDonation(donation)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Excluir
+                          </Button>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
 
                   {!loading && donations.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-10 text-center text-zinc-500">
+                      <TableCell colSpan={7} className="py-10 text-center text-zinc-500">
                         Nenhum cadastro salvo ainda.
                       </TableCell>
                     </TableRow>
@@ -300,7 +670,7 @@ export default function AdminDonations() {
 
                   {loading && (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-10 text-center text-zinc-500">
+                      <TableCell colSpan={7} className="py-10 text-center text-zinc-500">
                         Carregando cadastros...
                       </TableCell>
                     </TableRow>

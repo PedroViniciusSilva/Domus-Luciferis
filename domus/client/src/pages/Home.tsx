@@ -64,7 +64,7 @@ export default function Home() {
                 rel="noopener noreferrer"
               >
                 <Button size="lg" className="bg-primary text-black hover:bg-white hover:text-black font-cinzel font-bold tracking-widest px-8 py-6 text-lg rounded-sm transition-all duration-500 shadow-[0_0_20px_rgba(212,175,55,0.3)] hover:shadow-[0_0_40px_rgba(255,255,255,0.5)]">
-                  ENTRAR NO TEMPLO
+                  JUNTE-SE A NÓS
                 </Button>
               </a>
             </motion.div>

@@ -11,9 +11,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
     <div className="min-h-screen flex flex-col bg-background text-foreground overflow-x-hidden">
       {/* Navigation */}
       <header className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-md border-b border-primary/10">
-        <div className="container mx-auto px-4 h-20 flex items-center justify-between">
+        <div className="container mx-auto px-4 h-20 flex items-center justify-between gap-8">
           <Link href="/">
-            <div className="flex items-center gap-3 cursor-pointer group">
+            <div className="flex items-center gap-3 cursor-pointer group shrink-0">
               <img 
                 src="/images/logo.jpg" 
                 alt="Domus Luciferis Logo" 
@@ -26,24 +26,42 @@ export default function MainLayout({ children }: MainLayoutProps) {
           </Link>
           
           {/* Menu Principal Atualizado */}
-          <nav className="hidden md:flex items-center gap-6">
-            <Link href="/rituais" className="text-xs tracking-widest hover:text-primary transition-colors duration-300 uppercase">Rituais</Link>
-            <Link href="/produtos" className="text-xs tracking-widest hover:text-primary transition-colors duration-300 uppercase">Produtos</Link>
-            <Link href="/goetia" className="text-xs tracking-widest hover:text-primary transition-colors duration-300 uppercase">Goetia</Link>
-            <Link href="/doacoes" className="text-xs tracking-widest hover:text-primary transition-colors duration-300 uppercase">Doações</Link>
-            
-            <div className="h-4 w-[1px] bg-primary/20 mx-2" /> {/* Divisor visual */}
+          <nav className="hidden md:flex items-center gap-6 ml-auto pl-6">
+            <div className="flex items-center gap-5">
+              <Link href="/rituais" className="inline-flex h-10 items-center text-xs uppercase tracking-widest transition-colors duration-300 hover:text-primary">
+                Rituais
+              </Link>
+              <Link href="/produtos" className="inline-flex h-10 items-center text-xs uppercase tracking-widest transition-colors duration-300 hover:text-primary">
+                Produtos
+              </Link>
+              <Link href="/goetia" className="inline-flex h-10 items-center text-xs uppercase tracking-widest transition-colors duration-300 hover:text-primary">
+                Goetia
+              </Link>
+              <Link href="/doacoes" className="inline-flex h-10 items-center text-xs uppercase tracking-widest transition-colors duration-300 hover:text-primary">
+                Doações
+              </Link>
+            </div>
 
-            
-            <a 
-              href="https://chat.whatsapp.com/HhpYGYoCqkdDSrTpayzUjc" 
-              target="_blank" 
-              rel="noopener noreferrer"
-            >
-              <Button variant="outline" size="sm" className="border-primary text-primary hover:bg-primary hover:text-black font-cinzel tracking-wider text-xs">
-                Junte-se a Nós
-              </Button>
-            </a>
+            <div className="h-6 w-px bg-primary/20" /> {/* Divisor visual */}
+
+            <div className="flex items-center gap-3">
+              <a
+                href="https://chat.whatsapp.com/HhpYGYoCqkdDSrTpayzUjc"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex"
+              >
+                <Button variant="outline" size="sm" className="h-10 border-primary text-primary hover:bg-primary hover:text-black font-cinzel tracking-wider text-xs">
+                  Junte-se a Nós
+                </Button>
+              </a>
+
+              <Link href="/admin/doacoes" className="inline-flex">
+                <Button variant="outline" size="sm" className="h-10 border-primary/40 text-white hover:bg-primary hover:text-black font-cinzel tracking-wider text-xs">
+                  Membros
+                </Button>
+              </Link>
+            </div>
           </nav>
         </div>
       </header>
@@ -64,7 +82,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             "Transformar vivência em estrutura, conhecimento em serviço e prática em responsabilidade coletiva."
           </p>
           <div className="flex justify-center gap-6 mb-8">
-            <a href="#" className="text-muted-foreground hover:text-primary transition-colors">Instagram</a>
+            <a href="https://www.instagram.com/domusluciferis?igsh=MW00NmNyajZmM2dzdg%3D%3D" className="text-muted-foreground hover:text-primary transition-colors">Instagram</a>
             <a href="https://chat.whatsapp.com/HhpYGYoCqkdDSrTpayzUjc" className="text-muted-foreground hover:text-primary transition-colors">WhatsApp</a>
           </div>
           <p className="text-xs text-muted-foreground/50 uppercase tracking-widest">

@@ -25,11 +25,28 @@ function readEnvValue(key: string) {
   return line?.slice(key.length + 1).trim().replace(/^["']|["']$/g, "");
 }
 
-const adminToken = process.env.ADMIN_TOKEN || readEnvValue("ADMIN_TOKEN");
+const adminToken =
+  process.env.ADMIN_TOKEN ||
+  readEnvValue("ADMIN_TOKEN") ||
+  (process.env.NODE_ENV !== "production" ? "domus-dev-admin" : undefined);
 
 type DonationRecord = {
   id: string;
   createdAt: string;
+  updatedAt: string;
+  fullName: string;
+  phone: string;
+  email: string;
+  cpf: string;
+  address: {
+    street: string;
+    number: string;
+    neighborhood: string;
+    city: string;
+  };
+};
+
+type DonationPayload = {
   fullName: string;
   phone: string;
   email: string;
@@ -76,10 +93,59 @@ function sanitizeText(value: unknown, maxLength = 160) {
   return String(value || "").trim().slice(0, maxLength);
 }
 
+function buildDonationRecord(body: Partial<DonationPayload>, existing?: DonationRecord) {
+  const address: Partial<DonationPayload["address"]> = body.address || {};
+  const now = new Date().toISOString();
+  const donation: DonationRecord = {
+    id: existing?.id || randomUUID(),
+    createdAt: existing?.createdAt || now,
+    updatedAt: now,
+    fullName: sanitizeText(body.fullName),
+    phone: sanitizeText(body.phone, 32),
+    email: sanitizeText(body.email, 120).toLowerCase(),
+    cpf: formatCpf(sanitizeText(body.cpf, 20)),
+    address: {
+      street: sanitizeText(address.street),
+      number: sanitizeText(address.number, 20),
+      neighborhood: sanitizeText(address.neighborhood),
+      city: sanitizeText(address.city),
+    },
+  };
+
+  const invalidFields = [
+    donation.fullName.split(/\s+/).length < 2 && "fullName",
+    onlyDigits(donation.phone).length < 10 && "phone",
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(donation.email) && "email",
+    !isValidCpf(donation.cpf) && "cpf",
+    !donation.address.street && "street",
+    !donation.address.number && "number",
+    !donation.address.neighborhood && "neighborhood",
+    !donation.address.city && "city",
+  ].filter(Boolean);
+
+  return { donation, invalidFields };
+}
+
 async function readDonations() {
   try {
     const content = await fs.readFile(databasePath, "utf8");
-    return JSON.parse(content) as DonationRecord[];
+    const donations = JSON.parse(content) as Array<Partial<DonationRecord>>;
+
+    return donations.map((donation) => ({
+      id: donation.id || randomUUID(),
+      createdAt: donation.createdAt || new Date().toISOString(),
+      updatedAt: donation.updatedAt || donation.createdAt || new Date().toISOString(),
+      fullName: donation.fullName || "",
+      phone: donation.phone || "",
+      email: donation.email || "",
+      cpf: donation.cpf || "",
+      address: {
+        street: donation.address?.street || "",
+        number: donation.address?.number || "",
+        neighborhood: donation.address?.neighborhood || "",
+        city: donation.address?.city || "",
+      },
+    }));
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
 
@@ -110,6 +176,7 @@ function csvValue(value: string) {
 function toCsv(donations: DonationRecord[]) {
   const headers = [
     "Data de cadastro",
+    "Atualizado em",
     "Nome completo",
     "Telefone",
     "Email",
@@ -121,6 +188,7 @@ function toCsv(donations: DonationRecord[]) {
   ];
   const rows = donations.map((donation) => [
     donation.createdAt,
+    donation.updatedAt || donation.createdAt,
     donation.fullName,
     donation.phone,
     donation.email,
@@ -145,33 +213,11 @@ async function startServer() {
 
   app.post("/api/donations", async (req, res) => {
     const body = req.body || {};
-    const address = body.address || {};
-    const donation: DonationRecord = {
-      id: randomUUID(),
-      createdAt: new Date().toISOString(),
-      fullName: sanitizeText(body.fullName),
-      phone: sanitizeText(body.phone, 32),
-      email: sanitizeText(body.email, 120).toLowerCase(),
-      cpf: formatCpf(sanitizeText(body.cpf, 20)),
-      address: {
-        street: sanitizeText(address.street),
-        number: sanitizeText(address.number, 20),
-        neighborhood: sanitizeText(address.neighborhood),
-        city: sanitizeText(address.city),
-      },
-    };
+    const { donation, invalidFields } = buildDonationRecord(body);
 
-    const invalidFields = [
-      donation.fullName.split(/\s+/).length < 2 && "fullName",
-      onlyDigits(donation.phone).length < 10 && "phone",
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(donation.email) && "email",
-      !isValidCpf(donation.cpf) && "cpf",
-      !donation.address.street && "street",
-      !donation.address.number && "number",
-      !donation.address.neighborhood && "neighborhood",
-      !donation.address.city && "city",
-      body.acceptedLgpd !== true && "acceptedLgpd",
-    ].filter(Boolean);
+    if (body.acceptedLgpd !== true) {
+      invalidFields.push("acceptedLgpd");
+    }
 
     if (invalidFields.length > 0) {
       return res.status(400).json({
@@ -189,6 +235,59 @@ async function startServer() {
         "Cadastro feito com sucesso. Você será avisada para qual dia buscar a cesta.",
       id: donation.id,
     });
+  });
+
+  app.patch("/api/admin/donations/:id", async (req, res) => {
+    if (!isAdminRequest(req)) {
+      return res.status(401).json({ message: "Acesso administrativo não autorizado." });
+    }
+
+    const donations = await readDonations();
+    const index = donations.findIndex((donation) => donation.id === req.params.id);
+
+    if (index < 0) {
+      return res.status(404).json({ message: "Cadastro não encontrado." });
+    }
+
+    const { donation, invalidFields } = buildDonationRecord(req.body || {}, donations[index]);
+
+    if (invalidFields.length > 0) {
+      return res.status(400).json({
+        message: "Verifique os dados do cadastro.",
+        fields: invalidFields,
+      });
+    }
+
+    donations[index] = {
+      ...donations[index],
+      ...donation,
+      createdAt: donations[index].createdAt,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await writeDonations(donations);
+
+    return res.json({
+      message: "Cadastro atualizado com sucesso.",
+      donation: donations[index],
+    });
+  });
+
+  app.delete("/api/admin/donations/:id", async (req, res) => {
+    if (!isAdminRequest(req)) {
+      return res.status(401).json({ message: "Acesso administrativo não autorizado." });
+    }
+
+    const donations = await readDonations();
+    const nextDonations = donations.filter((donation) => donation.id !== req.params.id);
+
+    if (nextDonations.length === donations.length) {
+      return res.status(404).json({ message: "Cadastro não encontrado." });
+    }
+
+    await writeDonations(nextDonations);
+
+    return res.json({ message: "Cadastro removido com sucesso." });
   });
 
   app.get("/api/admin/donations", async (req, res) => {
@@ -226,7 +325,7 @@ async function startServer() {
     res.sendFile(path.join(staticPath, "index.html"));
   });
 
-  const port = process.env.PORT || 3000;
+  const port = Number(process.env.PORT || (process.env.NODE_ENV === "production" ? 3000 : 3001));
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);

@@ -215,7 +215,7 @@ export default function Members() {
       <section className="mx-auto max-w-5xl">
         <div className="mb-10 text-center">
           <p className="mb-3 text-xs uppercase tracking-[0.35em] text-primary/60">
-            Apoio ao templo
+            Apoio do templo
           </p>
           <h1 className="font-cinzel text-4xl text-primary md:text-5xl">Doações</h1>
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-muted-foreground">
