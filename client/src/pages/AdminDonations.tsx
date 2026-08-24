@@ -14,6 +14,7 @@ import {
   ArrowLeft,
   Download,
   Edit3,
+  HelpCircle,
   Home,
   LockKeyhole,
   RefreshCw,
@@ -52,7 +53,6 @@ type DonationForm = {
 };
 
 const adminTokenKey = "domus-admin-token";
-const defaultAdminToken = import.meta.env.DEV ? "domus-dev-admin" : "";
 
 const emptyForm: DonationForm = {
   fullName: "",
@@ -136,18 +136,21 @@ async function readJsonResponse<T>(response: Response) {
 export default function AdminDonations() {
   const [, setLocation] = useLocation();
   const [adminToken, setAdminToken] = useState(
-    () => sessionStorage.getItem(adminTokenKey) || defaultAdminToken
+    () => sessionStorage.getItem(adminTokenKey) || ""
   );
-  const [tokenInput, setTokenInput] = useState(adminToken);
+  const [tokenInput, setTokenInput] = useState("");
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [loginError, setLoginError] = useState("");
   const [donations, setDonations] = useState<DonationRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [authenticating, setAuthenticating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<DonationForm>(emptyForm);
   const [formError, setFormError] = useState("");
 
-  const isAuthenticated = adminToken.length > 0;
+  const isAuthenticated = adminToken.trim().length > 0;
   const editingDonation = useMemo(
     () => donations.find((donation) => donation.id === editingId) || null,
     [donations, editingId]
@@ -194,22 +197,63 @@ export default function AdminDonations() {
       setDonations(data.donations || []);
     } catch (error) {
       setDonations([]);
-      setError(
+      const msg =
         error instanceof Error
           ? error.message
-          : "Não foi possível carregar os cadastros."
-      );
+          : "Não foi possível carregar os cadastros.";
+      setError(msg);
+      setLoginError("Sessão expirada ou chave incorreta. Digite novamente.");
+      sessionStorage.removeItem(adminTokenKey);
+      setAdminToken("");
     } finally {
       setLoading(false);
     }
   }
 
-  function handleLogin(event: FormEvent<HTMLFormElement>) {
+  async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setLoginError("");
 
     const token = tokenInput.trim();
-    sessionStorage.setItem(adminTokenKey, token);
-    setAdminToken(token);
+    if (!token) {
+      setLoginError("Digite a chave de administrador.");
+      return;
+    }
+
+    setAuthenticating(true);
+
+    try {
+      const response = await fetch("/api/admin/donations", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await readJsonResponse<{
+        donations?: DonationRecord[];
+        message?: string;
+      }>(response);
+
+      if (!response.ok) {
+        throw new Error(data.message || "Chave de administrador incorreta.");
+      }
+
+      sessionStorage.setItem(adminTokenKey, token);
+      setAdminToken(token);
+      setDonations(data.donations || []);
+      setLoginError("");
+    } catch (error) {
+      sessionStorage.removeItem(adminTokenKey);
+      setAdminToken("");
+      setDonations([]);
+      setLoginError(
+        error instanceof Error
+          ? error.message
+          : "Chave de administrador incorreta ou acesso não autorizado."
+      );
+    } finally {
+      setAuthenticating(false);
+    }
   }
 
   function handleLogout() {
@@ -218,6 +262,7 @@ export default function AdminDonations() {
     setTokenInput("");
     setDonations([]);
     setError("");
+    setLoginError("");
     setEditingId(null);
     setForm(emptyForm);
     setFormError("");
@@ -410,35 +455,89 @@ export default function AdminDonations() {
         </div>
 
         {!isAuthenticated ? (
-          <Card className="mx-auto max-w-md border-primary/10 bg-zinc-950/80">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 font-cinzel text-2xl text-primary">
-                <LockKeyhole className="h-5 w-5" />
-                Acesso admin
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form className="space-y-4" onSubmit={handleLogin}>
-                <div className="space-y-2">
-                  <Label htmlFor="adminToken">Chave de administrador</Label>
-                  <Input
-                    id="adminToken"
-                    type="password"
-                    value={tokenInput}
-                    onChange={(event) => setTokenInput(event.target.value)}
-                    placeholder="Digite a chave admin"
-                    className="h-11 border-primary/20 bg-black/30"
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  className="h-11 w-full bg-primary font-cinzel text-black hover:bg-white"
-                >
-                  Entrar
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+          <div className="relative mx-auto max-w-md">
+            <Card className="border-primary/10 bg-zinc-950/80">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 font-cinzel text-2xl text-primary">
+                  <LockKeyhole className="h-5 w-5" />
+                  Acesso admin
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form className="space-y-4" onSubmit={handleLogin}>
+                  <div className="space-y-2">
+                    <Label htmlFor="adminToken">Chave de administrador</Label>
+                    <Input
+                      id="adminToken"
+                      type="password"
+                      value={tokenInput}
+                      onChange={(event) => setTokenInput(event.target.value)}
+                      placeholder="Digite a chave admin"
+                      className="h-11 border-primary/20 bg-black/30"
+                    />
+                  </div>
+
+                  {loginError && (
+                    <div className="rounded-md border border-red-400/20 bg-red-400/10 p-3 text-xs text-red-300">
+                      {loginError}
+                    </div>
+                  )}
+
+                  <Button
+                    type="submit"
+                    disabled={authenticating}
+                    className="h-11 w-full bg-primary font-cinzel text-black hover:bg-white disabled:opacity-50"
+                  >
+                    {authenticating ? "Verificando..." : "Entrar"}
+                  </Button>
+
+                  <div className="text-center pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotModal(true)}
+                      className="text-xs text-primary/60 hover:text-primary transition-colors underline-offset-4 hover:underline"
+                    >
+                      Esqueci minha chave de acesso
+                    </button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+
+            {showForgotModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+                <Card className="w-full max-w-md border-primary/30 bg-zinc-950 p-6 relative">
+                  <button
+                    onClick={() => setShowForgotModal(false)}
+                    className="absolute top-4 right-4 text-zinc-400 hover:text-white"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                  <div className="flex items-center gap-3 text-primary mb-4">
+                    <HelpCircle className="h-6 w-6" />
+                    <h3 className="font-cinzel text-lg uppercase">Recuperar Acesso</h3>
+                  </div>
+                  <div className="space-y-3 text-sm text-zinc-300">
+                    <p>
+                      A chave administrativa é configurada nas variáveis de ambiente do servidor do Templo.
+                    </p>
+                    <div className="bg-black/60 p-3 rounded border border-primary/10 font-mono text-xs text-primary/80">
+                      Variável: ADMIN_TOKEN no arquivo .env
+                    </div>
+                    <p className="text-xs text-zinc-400">
+                      Caso não tenha acesso direto ao servidor, contate o administrador técnico do Domus Luciferis para gerar uma nova chave.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => setShowForgotModal(false)}
+                    className="mt-6 w-full bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30"
+                  >
+                    Entendido
+                  </Button>
+                </Card>
+              </div>
+            )}
+          </div>
         ) : (
           <Card className="border-primary/10 bg-zinc-950/80">
             <CardHeader className="gap-4 md:flex md:flex-row md:items-center md:justify-between">
@@ -662,7 +761,7 @@ export default function AdminDonations() {
 
                   {!loading && donations.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={7} className="py-10 text-center text-zinc-500">
+                      <TableCell colSpan={8} className="py-10 text-center text-zinc-500">
                         Nenhum cadastro salvo ainda.
                       </TableCell>
                     </TableRow>
@@ -670,7 +769,7 @@ export default function AdminDonations() {
 
                   {loading && (
                     <TableRow>
-                      <TableCell colSpan={7} className="py-10 text-center text-zinc-500">
+                      <TableCell colSpan={8} className="py-10 text-center text-zinc-500">
                         Carregando cadastros...
                       </TableCell>
                     </TableRow>

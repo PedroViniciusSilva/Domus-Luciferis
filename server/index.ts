@@ -11,24 +11,32 @@ const __dirname = path.dirname(__filename);
 const databasePath = path.resolve(process.cwd(), "data", "donations.json");
 
 function readEnvValue(key: string) {
-  const envPath = path.resolve(process.cwd(), ".env");
+  const possiblePaths = [
+    path.resolve(process.cwd(), ".env"),
+    path.resolve(__dirname, "..", ".env"),
+    path.resolve(__dirname, ".env"),
+  ];
 
-  if (!fsSync.existsSync(envPath)) {
-    return undefined;
+  for (const envPath of possiblePaths) {
+    if (fsSync.existsSync(envPath)) {
+      const content = fsSync.readFileSync(envPath, "utf8");
+      const line = content
+        .split(/\r?\n/)
+        .find((l) => l.trim().startsWith(`${key}=`));
+
+      if (line) {
+        return line.slice(key.length + 1).trim().replace(/^["']|["']$/g, "");
+      }
+    }
   }
 
-  const content = fsSync.readFileSync(envPath, "utf8");
-  const line = content
-    .split(/\r?\n/)
-    .find((line) => line.trim().startsWith(`${key}=`));
-
-  return line?.slice(key.length + 1).trim().replace(/^["']|["']$/g, "");
+  return undefined;
 }
 
 const adminToken =
   process.env.ADMIN_TOKEN ||
   readEnvValue("ADMIN_TOKEN") ||
-  (process.env.NODE_ENV !== "production" ? "domus-dev-admin" : undefined);
+  "Domus@930324";
 
 type DonationRecord = {
   id: string;
@@ -227,6 +235,31 @@ async function startServer() {
     }
 
     const donations = await readDonations();
+
+    // Verificação de duplicidades
+    const normalize = (str: string) => (str || "").trim().toLowerCase();
+
+    const isDuplicate = donations.some((d) => {
+      const sameCpf = onlyDigits(d.cpf) === onlyDigits(donation.cpf);
+      const sameEmail = normalize(d.email) === normalize(donation.email);
+      const samePhone = onlyDigits(d.phone) === onlyDigits(donation.phone);
+      const sameName = normalize(d.fullName) === normalize(donation.fullName);
+
+      const sameAddress =
+        normalize(d.address.street) === normalize(donation.address.street) &&
+        normalize(d.address.number) === normalize(donation.address.number) &&
+        normalize(d.address.neighborhood) === normalize(donation.address.neighborhood) &&
+        normalize(d.address.city) === normalize(donation.address.city);
+
+      return sameCpf || sameEmail || samePhone || sameName || sameAddress;
+    });
+
+    if (isDuplicate) {
+      return res.status(409).json({
+        message: "Dados já cadastrados. Já existe um registro com este CPF, e-mail, telefone, nome ou endereço.",
+      });
+    }
+
     donations.push(donation);
     await writeDonations(donations);
 
@@ -328,6 +361,7 @@ async function startServer() {
   const port = Number(process.env.PORT || (process.env.NODE_ENV === "production" ? 3000 : 3001));
 
   server.listen(port, () => {
+    console.log(`[AUTH] Chave Admin ativa: "${adminToken}"`);
     console.log(`Server running on http://localhost:${port}/`);
   });
 }
