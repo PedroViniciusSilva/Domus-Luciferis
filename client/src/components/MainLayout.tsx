@@ -84,6 +84,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
           <div className="flex justify-center gap-6 mb-8">
             <a href="https://www.instagram.com/domusluciferis?igsh=MW00NmNyajZmM2dzdg%3D%3D" className="text-muted-foreground hover:text-primary transition-colors">Instagram</a>
             <a href="https://chat.whatsapp.com/HhpYGYoCqkdDSrTpayzUjc" className="text-muted-foreground hover:text-primary transition-colors">WhatsApp</a>
+            <a href="https://www.youtube.com/@domusluciferis" className="text-muted-foreground hover:text-primary transition-colors">YouTube</a>
+            <a href="https://email.domusluciferis.com" className="text-muted-foreground hover:text-primary transition-colors">Email</a>
+            <a href="https://tiktok.com/@templodomusluciferis" className="text-muted-foreground hover:text-primary transition-colors">TikTok</a>
           </div>
           <p className="text-xs text-muted-foreground/50 uppercase tracking-widest">
             &copy; {new Date().getFullYear()} Templo Domus Luciferis. Todos os direitos reservados.
