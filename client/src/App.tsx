@@ -6,14 +6,14 @@ import { Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 
-// Imports Reais
+// Imports das Páginas
 import Home from "./pages/Home";
 import Rituals from "./pages/Rituals";
-import Shop from "./pages/Shop";
+import Schedule from "./pages/Schedule";
 import Goetia from "./pages/Goetia";
 import Donations from "./pages/Members";
 import AdminDonations from "./pages/AdminDonations";
-import EntityDetail from "./pages/EntityDetail"; // Página de detalhes que você vai criar
+import EntityDetail from "./pages/EntityDetail";
 import Presentation from "./pages/Presentation";
 
 function LegacyMembersRedirect() {
@@ -33,14 +33,20 @@ function Router() {
       
       {/* Rotas principais */}
       <Route path="/rituais" component={Rituals} />
-      <Route path="/produtos" component={Shop} />
+      
+      {/* Rota do Cronograma (compatível com os caminhos novo e legados) */}
+      <Route path="/cronograma" component={Schedule} />
+      <Route path="/schedule" component={Schedule} />
+      <Route path="/produtos" component={Schedule} />
+      <Route path="/shop" component={Schedule} />
+
       <Route path="/goetia" component={Goetia} />
       <Route path="/doacoes" component={Donations} />
       <Route path="/apresentacao" component={Presentation} />
       <Route path="/membros" component={LegacyMembersRedirect} />
       <Route path="/admin/doacoes" component={AdminDonations} />
 
-      {/* ROTA DINÂMICA: Essencial para abrir a tela completa de cada Daemon */}
+      {/* Rota dinâmica para detalhes de entidades */}
       <Route path="/goetia/:slug" component={EntityDetail} />
 
       <Route path="/404" component={NotFound} />

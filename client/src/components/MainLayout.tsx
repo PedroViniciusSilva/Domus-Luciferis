@@ -32,7 +32,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 Rituais
               </Link>
               <Link href="/produtos" className="inline-flex h-10 items-center text-xs uppercase tracking-widest transition-colors duration-300 hover:text-primary">
-                Produtos
+                Cronograma
               </Link>
               <Link href="/goetia" className="inline-flex h-10 items-center text-xs uppercase tracking-widest transition-colors duration-300 hover:text-primary">
                 Goetia

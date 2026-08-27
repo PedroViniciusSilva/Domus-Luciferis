@@ -8,6 +8,7 @@ import {
   Calendar as CalendarIcon,
   Edit2,
   Home,
+  Loader2,
   Lock,
   MapPin,
   MessageCircle,
@@ -17,13 +18,13 @@ import {
   Sparkles,
   Trash2,
   Unlock,
+  Upload,
   Video,
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 
-// Tipos
 type GalleryItem = {
   id: string;
   title: string;
@@ -36,45 +37,52 @@ type GalleryItem = {
 type EventItem = {
   id: string;
   title: string;
-  date: string;
+  date: string; // Formato YYYY-MM-DD para validação precisa
+  displayDate: string; // Exibição formatada: '15 de Setembro de 2026'
   time: string;
   location: string;
   type: "Presencial" | "Online / Egrégora" | "Híbrido";
   period: "semana" | "mes";
   description: string;
+  imageUrl?: string;
 };
 
-// Dados Padrão Iniciais
 const DEFAULT_EVENTS: EventItem[] = [
   {
     id: "cal-1",
     title: "Rito da Lua Negra & Despertar com Hécate",
-    date: "15 de Setembro de 2026",
+    date: "2026-09-15",
+    displayDate: "15 de Setembro de 2026",
     time: "21:00",
     location: "Santuário Principal & Transmissão para Iniciados",
     type: "Híbrido",
     period: "semana",
     description: "Consagração aos mistérios noturnos, intuição profunda e banimento de energias estagnadas.",
+    imageUrl: "/images/rituals/amarracao.jpg",
   },
   {
     id: "cal-2",
     title: "Firmeza Coletiva de Abundância com Mammon",
-    date: "03 de Outubro de 2026",
+    date: "2026-10-03",
+    displayDate: "03 de Outubro de 2026",
     time: "20:00",
     location: "Altar Solar do Templo",
     type: "Presencial",
     period: "mes",
     description: "Cerimônia focada na atração material e crescimento patrimonial dos membros.",
+    imageUrl: "/images/rituals/prosperidade.png",
   },
   {
     id: "cal-3",
     title: "Grande Sabá & Honra aos Guardiões",
-    date: "31 de Outubro de 2026",
+    date: "2026-10-31",
+    displayDate: "31 de Outubro de 2026",
     time: "22:00",
     location: "Santuário Domus Luciferis",
     type: "Presencial",
     period: "mes",
     description: "O maior rito anual de comunhão com a egrégora luciferiana e os Deuses Prévios.",
+    imageUrl: "/images/rituals/seere.png",
   },
 ];
 
@@ -132,12 +140,35 @@ const DEFAULT_PHOTOS: GalleryItem[] = [
   },
 ];
 
-const ADMIN_KEY = "Domus@930324";
+const ADMIN_KEY = "admin123";
 
-export default function Shop() {
+// Formata 'YYYY-MM-DD' para 'DD de Mês de AAAA'
+function formatToDisplayDate(dateString: string): string {
+  if (!dateString) return "";
+  const parts = dateString.split("-");
+  if (parts.length !== 3) return dateString;
+
+  const [year, month, day] = parts;
+  const months = [
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+  ];
+  const monthName = months[parseInt(month, 10) - 1] || month;
+  return `${day} de ${monthName} de ${year}`;
+}
+
+// Retorna a data mínima de hoje no formato YYYY-MM-DD
+function getTodayIsoDate(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export default function Schedule() {
   const [, setLocation] = useLocation();
 
-  // Estados dos Dados
   const [events, setEvents] = useState<EventItem[]>(() => {
     const saved = localStorage.getItem("domus_events");
     return saved ? JSON.parse(saved) : DEFAULT_EVENTS;
@@ -154,18 +185,29 @@ export default function Shop() {
   });
 
   useEffect(() => {
-    localStorage.setItem("domus_events", JSON.stringify(events));
+    try {
+      localStorage.setItem("domus_events", JSON.stringify(events));
+    } catch (e) {
+      console.warn("Storage quota exceeded for events");
+    }
   }, [events]);
 
   useEffect(() => {
-    localStorage.setItem("domus_videos", JSON.stringify(videos));
+    try {
+      localStorage.setItem("domus_videos", JSON.stringify(videos));
+    } catch (e) {
+      console.warn("Storage quota exceeded for videos");
+    }
   }, [videos]);
 
   useEffect(() => {
-    localStorage.setItem("domus_photos", JSON.stringify(photos));
+    try {
+      localStorage.setItem("domus_photos", JSON.stringify(photos));
+    } catch (e) {
+      console.warn("Storage quota exceeded for photos");
+    }
   }, [photos]);
 
-  // Controle de Autenticação Admin
   const [isAdmin, setIsAdmin] = useState<boolean>(() => {
     return sessionStorage.getItem("domus_is_admin") === "true";
   });
@@ -173,23 +215,23 @@ export default function Shop() {
   const [adminPasswordInput, setAdminPasswordInput] = useState("");
   const [authError, setAuthError] = useState("");
 
-  // Controles de Visualização
   const [filterPeriod, setFilterPeriod] = useState<"todos" | "semana" | "mes">("todos");
   const [expandedMedia, setExpandedMedia] = useState<GalleryItem | null>(null);
 
-  // Estados dos Modais de Cadastro/Edição
   const [activeModal, setActiveModal] = useState<"event" | "video" | "photo" | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formValidationMsg, setFormValidationMsg] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const [eventForm, setEventForm] = useState<Partial<EventItem>>({
     title: "",
-    date: "",
+    date: getTodayIsoDate(),
     time: "20:00",
     location: "Santuário Domus Luciferis",
     type: "Presencial",
     period: "semana",
     description: "",
+    imageUrl: "",
   });
 
   const [mediaForm, setMediaForm] = useState<Partial<GalleryItem>>({
@@ -223,39 +265,86 @@ export default function Shop() {
     return `https://chat.whatsapp.com/HhpYGYoCqkdDSrTpayzUjc?text=${text}`;
   }
 
+  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>, target: "event" | "media") {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setFormValidationMsg(null);
+
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        if (target === "event") {
+          setEventForm((prev) => ({ ...prev, imageUrl: result }));
+        } else {
+          setMediaForm((prev) => ({ ...prev, mediaUrl: result }));
+        }
+        setIsUploading(false);
+      };
+      reader.onerror = () => {
+        setFormValidationMsg("Erro ao processar imagem.");
+        setIsUploading(false);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      const videoBlobUrl = URL.createObjectURL(file);
+      setMediaForm((prev) => ({ ...prev, mediaUrl: videoBlobUrl }));
+      setIsUploading(false);
+    }
+  }
+
   const filteredEvents =
     filterPeriod === "todos"
       ? events
       : events.filter((e) => e.period === filterPeriod);
 
-  // Validação e Salvamento de Eventos
-  function handleSaveEvent() {
+  // Validação estrita de Data e Horário
+  function handleSaveEventDirect() {
     setFormValidationMsg(null);
 
-    // Validação de campos obrigatórios
     if (!eventForm.title || eventForm.title.trim() === "") {
       setFormValidationMsg("O título do ritual ou evento é obrigatório.");
       return;
     }
-
     if (!eventForm.date || eventForm.date.trim() === "") {
-      setFormValidationMsg("A data do evento é obrigatória (ex: 15 de Outubro).");
+      setFormValidationMsg("Selecione a data do evento.");
       return;
     }
 
+    const timeString = eventForm.time || "20:00";
+    const selectedDateTime = new Date(`${eventForm.date}T${timeString}:00`);
+    const now = new Date();
+
+    if (isNaN(selectedDateTime.getTime())) {
+      setFormValidationMsg("Formato de data ou horário inválido.");
+      return;
+    }
+
+    // Bloqueia se a data/hora combinada for menor que agora
+    if (selectedDateTime.getTime() < now.getTime()) {
+      setFormValidationMsg("Não é permitido agendar atividades em datas ou horários que já passaram.");
+      return;
+    }
+
+    const formattedDisplayDate = formatToDisplayDate(eventForm.date);
+
     if (editingId) {
-      setEvents(
-        events.map((ev) =>
+      setEvents((prevEvents) =>
+        prevEvents.map((ev) =>
           ev.id === editingId
             ? {
                 ...ev,
                 title: eventForm.title!.trim(),
-                date: eventForm.date!.trim(),
-                time: (eventForm.time || "20:00").trim(),
+                date: eventForm.date!,
+                displayDate: formattedDisplayDate,
+                time: timeString.trim(),
                 location: (eventForm.location || "Santuário Domus Luciferis").trim(),
                 type: eventForm.type || "Presencial",
                 period: eventForm.period || "semana",
                 description: (eventForm.description || "").trim(),
+                imageUrl: eventForm.imageUrl || "",
               }
             : ev
         )
@@ -263,15 +352,17 @@ export default function Shop() {
     } else {
       const newEvent: EventItem = {
         id: `event-${Date.now()}`,
-        title: eventForm.title.trim(),
-        date: eventForm.date.trim(),
-        time: (eventForm.time || "20:00").trim(),
+        title: eventForm.title!.trim(),
+        date: eventForm.date!,
+        displayDate: formattedDisplayDate,
+        time: timeString.trim(),
         location: (eventForm.location || "Santuário Domus Luciferis").trim(),
         type: eventForm.type || "Presencial",
         period: eventForm.period || "semana",
         description: (eventForm.description || "").trim(),
+        imageUrl: eventForm.imageUrl || "",
       };
-      setEvents([newEvent, ...events]);
+      setEvents((prev) => [newEvent, ...prev]);
     }
 
     setActiveModal(null);
@@ -279,107 +370,72 @@ export default function Shop() {
     setFormValidationMsg(null);
   }
 
-  function handleDeleteEvent(id: string) {
-    setEvents(events.filter((e) => e.id !== id));
-  }
-
-  // Validação e Salvamento de Vídeos
-  function handleSaveVideo() {
+  function handleSaveMediaDirect(type: "video" | "image") {
     setFormValidationMsg(null);
 
     if (!mediaForm.title || mediaForm.title.trim() === "") {
-      setFormValidationMsg("O título do vídeo é obrigatório.");
+      setFormValidationMsg(`O título do ${type === "video" ? "vídeo" : "arquivo de foto"} é obrigatório.`);
       return;
     }
     if (!mediaForm.mediaUrl || mediaForm.mediaUrl.trim() === "") {
-      setFormValidationMsg("A URL ou caminho do vídeo é obrigatório.");
+      setFormValidationMsg(`Selecione um arquivo de ${type === "video" ? "vídeo" : "imagem"} ou insira a URL.`);
       return;
     }
 
     if (editingId) {
-      setVideos(
-        videos.map((v) =>
-          v.id === editingId
-            ? {
-                ...v,
-                title: mediaForm.title!.trim(),
-                date: (mediaForm.date || "2026").trim(),
-                description: (mediaForm.description || "").trim(),
-                mediaUrl: mediaForm.mediaUrl!.trim(),
-              }
-            : v
-        )
-      );
+      if (type === "video") {
+        setVideos((prev) =>
+          prev.map((v) =>
+            v.id === editingId
+              ? {
+                  ...v,
+                  title: mediaForm.title!.trim(),
+                  date: (mediaForm.date || "2026").trim(),
+                  description: (mediaForm.description || "").trim(),
+                  mediaUrl: mediaForm.mediaUrl!.trim(),
+                }
+              : v
+          )
+        );
+      } else {
+        setPhotos((prev) =>
+          prev.map((p) =>
+            p.id === editingId
+              ? {
+                  ...p,
+                  title: mediaForm.title!.trim(),
+                  date: (mediaForm.date || "2026").trim(),
+                  description: (mediaForm.description || "").trim(),
+                  mediaUrl: mediaForm.mediaUrl!.trim(),
+                }
+              : p
+          )
+        );
+      }
     } else {
-      const newVideo: GalleryItem = {
-        id: `video-${Date.now()}`,
-        title: mediaForm.title.trim(),
+      const newItem: GalleryItem = {
+        id: `${type}-${Date.now()}`,
+        title: mediaForm.title!.trim(),
         date: (mediaForm.date || "2026").trim(),
         description: (mediaForm.description || "").trim(),
-        mediaType: "video",
-        mediaUrl: mediaForm.mediaUrl.trim(),
+        mediaType: type,
+        mediaUrl: mediaForm.mediaUrl!.trim(),
       };
-      setVideos([newVideo, ...videos]);
+      if (type === "video") {
+        setVideos((prev) => [newItem, ...prev]);
+      } else {
+        setPhotos((prev) => [newItem, ...prev]);
+      }
     }
+
     setActiveModal(null);
     setEditingId(null);
     setFormValidationMsg(null);
-  }
-
-  function handleDeleteVideo(id: string) {
-    setVideos(videos.filter((v) => v.id !== id));
-  }
-
-  // Validação e Salvamento de Fotos
-  function handleSavePhoto() {
-    setFormValidationMsg(null);
-
-    if (!mediaForm.title || mediaForm.title.trim() === "") {
-      setFormValidationMsg("O título da foto é obrigatório.");
-      return;
-    }
-    if (!mediaForm.mediaUrl || mediaForm.mediaUrl.trim() === "") {
-      setFormValidationMsg("O caminho ou URL da imagem é obrigatório.");
-      return;
-    }
-
-    if (editingId) {
-      setPhotos(
-        photos.map((p) =>
-          p.id === editingId
-            ? {
-                ...p,
-                title: mediaForm.title!.trim(),
-                date: (mediaForm.date || "2026").trim(),
-                description: (mediaForm.description || "").trim(),
-                mediaUrl: mediaForm.mediaUrl!.trim(),
-              }
-            : p
-        )
-      );
-    } else {
-      const newPhoto: GalleryItem = {
-        id: `photo-${Date.now()}`,
-        title: mediaForm.title.trim(),
-        date: (mediaForm.date || "2026").trim(),
-        description: (mediaForm.description || "").trim(),
-        mediaType: "image",
-        mediaUrl: mediaForm.mediaUrl.trim(),
-      };
-      setPhotos([newPhoto, ...photos]);
-    }
-    setActiveModal(null);
-    setEditingId(null);
-    setFormValidationMsg(null);
-  }
-
-  function handleDeletePhoto(id: string) {
-    setPhotos(photos.filter((p) => p.id !== id));
   }
 
   return (
     <div className="container mx-auto px-4 py-16">
-      {/* Barra de Navegação Superior e Acesso Admin */}
+      {/* Topo de Navegação */}
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div className="flex gap-3">
           <Button
@@ -402,7 +458,6 @@ export default function Shop() {
           </Button>
         </div>
 
-        {/* Botão de Controle de Acesso Admin */}
         {isAdmin ? (
           <Button
             onClick={handleLogoutAdmin}
@@ -428,29 +483,27 @@ export default function Shop() {
         )}
       </div>
 
-      {/* Cabeçalho Principal */}
+      {/* Título Principal */}
       <section className="mx-auto mb-16 max-w-4xl text-center">
         <p className="mb-3 text-xs uppercase tracking-[0.35em] text-primary/60">
           Santuário & Egrégora Luciferiana
         </p>
         <h1 className="font-cinzel text-4xl text-primary md:text-6xl">
-          Nossas Vivências & Eventos
+          Atividades & Vivências
         </h1>
         <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-muted-foreground">
           Acompanhe nosso calendário de rituais, os ensinamentos em vídeo e a galeria de fotos das operações no santuário.
         </p>
       </section>
 
-      {/* ========================================================
-          1. CALENDÁRIO DE ATIVIDADES
-         ======================================================== */}
+      {/* 1. SEÇÃO DE CRONOGRAMA */}
       <section className="mx-auto mb-20 max-w-5xl">
         <div className="mb-8 flex flex-col items-center justify-between gap-4 border-b border-primary/20 pb-6 sm:flex-row">
           <div>
             <div className="flex items-center gap-2 text-primary">
               <CalendarIcon className="h-5 w-5" />
               <h2 className="font-cinzel text-2xl text-primary md:text-3xl">
-                Calendário de Atividades
+                Cronograma
               </h2>
             </div>
             <p className="mt-1 text-xs text-zinc-400">
@@ -500,12 +553,13 @@ export default function Shop() {
                   setFormValidationMsg(null);
                   setEventForm({
                     title: "",
-                    date: "",
+                    date: getTodayIsoDate(),
                     time: "20:00",
                     location: "Santuário Domus Luciferis",
                     type: "Presencial",
                     period: "semana",
                     description: "",
+                    imageUrl: "",
                   });
                   setActiveModal("event");
                 }}
@@ -517,7 +571,7 @@ export default function Shop() {
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-6">
           {filteredEvents.length === 0 ? (
             <p className="text-center py-8 text-xs text-zinc-500 font-cinzel">
               Nenhuma atividade agendada para este período.
@@ -526,12 +580,41 @@ export default function Shop() {
             filteredEvents.map((event) => (
               <div
                 key={event.id}
-                className="relative flex flex-col justify-between gap-4 rounded-lg border border-primary/20 bg-zinc-950/80 p-5 backdrop-blur transition-all hover:border-primary/50 hover:shadow-[0_0_15px_rgba(212,175,55,0.08)] sm:flex-row sm:items-center"
+                className="relative overflow-hidden rounded-lg border border-primary/20 bg-zinc-950/80 p-5 backdrop-blur transition-all hover:border-primary/50 hover:shadow-[0_0_20px_rgba(212,175,55,0.1)] flex flex-col md:flex-row gap-6 items-center"
               >
-                <div className="space-y-2">
+                {event.imageUrl && (
+                  <div
+                    onClick={() =>
+                      setExpandedMedia({
+                        id: event.id,
+                        title: event.title,
+                        date: event.displayDate || event.date,
+                        description: event.description,
+                        mediaType: "image",
+                        mediaUrl: event.imageUrl!,
+                      })
+                    }
+                    className="relative aspect-[16/10] w-full md:w-56 shrink-0 cursor-pointer overflow-hidden rounded border border-primary/20 bg-black/95 flex items-center justify-center group"
+                    title="Clique para expandir"
+                  >
+                    <img
+                      src={event.imageUrl}
+                      alt=""
+                      aria-hidden="true"
+                      className="absolute inset-0 h-full w-full object-cover blur-md opacity-30 scale-110"
+                    />
+                    <img
+                      src={event.imageUrl}
+                      alt={event.title}
+                      className="relative z-10 max-h-full max-w-full object-contain p-1 transition-transform duration-500 group-hover:scale-105"
+                    />
+                  </div>
+                )}
+
+                <div className="flex-1 space-y-2 w-full">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded bg-primary/10 px-2 py-0.5 font-cinzel text-[11px] font-bold text-primary border border-primary/20">
-                      {event.date}
+                      {event.displayDate || formatToDisplayDate(event.date)}
                     </span>
                     <span className="rounded bg-black/60 px-2 py-0.5 text-[10px] text-zinc-400">
                       {event.type}
@@ -543,7 +626,7 @@ export default function Shop() {
                   <h3 className="font-cinzel text-lg text-primary">
                     {event.title}
                   </h3>
-                  <p className="text-xs text-zinc-400 max-w-xl">
+                  <p className="text-xs text-zinc-400 leading-relaxed">
                     {event.description}
                   </p>
                   <div className="flex flex-wrap items-center gap-4 text-[11px] text-zinc-400 pt-1">
@@ -556,9 +639,9 @@ export default function Shop() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex flex-col sm:flex-row items-center gap-2 shrink-0 w-full md:w-auto">
                   {isAdmin && (
-                    <>
+                    <div className="flex gap-2 w-full sm:w-auto justify-end">
                       <Button
                         size="icon"
                         variant="ghost"
@@ -576,13 +659,17 @@ export default function Shop() {
                       <Button
                         size="icon"
                         variant="ghost"
-                        onClick={() => handleDeleteEvent(event.id)}
+                        onClick={() => {
+                          if (confirm("Tem certeza que deseja remover esta atividade do cronograma?")) {
+                            setEvents((prev) => prev.filter((e) => e.id !== event.id));
+                          }
+                        }}
                         className="h-8 w-8 text-zinc-400 hover:text-red-400"
                         title="Excluir Evento"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
-                    </>
+                    </div>
                   )}
                   <Button
                     asChild
@@ -603,9 +690,7 @@ export default function Shop() {
         </div>
       </section>
 
-      {/* ========================================================
-          2. VÍDEOS & TRANSMISSÕES
-         ======================================================== */}
+      {/* 2. VÍDEOS */}
       <section className="mx-auto mb-20 max-w-6xl">
         <div className="mb-8 flex items-center justify-between border-b border-primary/20 pb-4">
           <div>
@@ -636,7 +721,7 @@ export default function Shop() {
               }}
               className="bg-primary text-black font-cinzel text-xs uppercase"
             >
-              <Plus className="mr-1 h-4 w-4" /> Novo Vídeo
+              <Plus className="mr-1 h-4 w-4" /> Enviar Novo Vídeo
             </Button>
           )}
         </div>
@@ -665,7 +750,11 @@ export default function Shop() {
                   <Button
                     size="icon"
                     variant="ghost"
-                    onClick={() => handleDeleteVideo(item.id)}
+                    onClick={() => {
+                      if (confirm("Deseja realmente remover este vídeo?")) {
+                        setVideos((prev) => prev.filter((v) => v.id !== item.id));
+                      }
+                    }}
                     className="h-7 w-7 text-zinc-300 hover:text-red-400"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -675,12 +764,19 @@ export default function Shop() {
 
               <div
                 onClick={() => setExpandedMedia(item)}
-                className="relative aspect-video w-full cursor-pointer bg-black flex items-center justify-center group"
+                className="relative aspect-video w-full cursor-pointer bg-black/95 flex items-center justify-center group overflow-hidden"
               >
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/20 border border-primary/40 text-primary transition-transform group-hover:scale-110 group-hover:bg-primary group-hover:text-black">
+                <video
+                  src={`${item.mediaUrl}#t=0.5`}
+                  preload="metadata"
+                  muted
+                  playsInline
+                  className="absolute inset-0 h-full w-full object-cover opacity-80 transition-transform duration-500 group-hover:scale-105"
+                />
+                <div className="relative z-10 flex h-16 w-16 items-center justify-center rounded-full bg-primary/30 border border-primary/50 text-primary backdrop-blur-sm transition-transform group-hover:scale-110 group-hover:bg-primary group-hover:text-black">
                   <Play className="h-7 w-7 fill-current ml-1" />
                 </div>
-                <span className="absolute bottom-3 right-3 rounded bg-black/80 px-2 py-1 text-[11px] text-zinc-300 backdrop-blur">
+                <span className="absolute bottom-3 right-3 z-10 rounded bg-black/80 px-2 py-1 text-[11px] text-zinc-300 backdrop-blur">
                   {item.date}
                 </span>
               </div>
@@ -699,9 +795,7 @@ export default function Shop() {
         </div>
       </section>
 
-      {/* ========================================================
-          3. FOTOS DOS EVENTOS
-         ======================================================== */}
+      {/* 3. FOTOS */}
       <section className="mx-auto mb-16 max-w-6xl">
         <div className="mb-8 flex items-center justify-between border-b border-primary/20 pb-4">
           <div>
@@ -732,7 +826,7 @@ export default function Shop() {
               }}
               className="bg-primary text-black font-cinzel text-xs uppercase"
             >
-              <Plus className="mr-1 h-4 w-4" /> Nova Foto
+              <Plus className="mr-1 h-4 w-4" /> Enviar Nova Foto
             </Button>
           )}
         </div>
@@ -764,7 +858,9 @@ export default function Shop() {
                     variant="ghost"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleDeletePhoto(item.id);
+                      if (confirm("Deseja realmente remover esta foto da galeria?")) {
+                        setPhotos((prev) => prev.filter((p) => p.id !== item.id));
+                      }
                     }}
                     className="h-7 w-7 text-zinc-300 hover:text-red-400"
                   >
@@ -775,7 +871,7 @@ export default function Shop() {
 
               <div
                 onClick={() => setExpandedMedia(item)}
-                className="relative aspect-square w-full cursor-pointer overflow-hidden bg-black flex items-center justify-center"
+                className="relative aspect-square w-full cursor-pointer overflow-hidden bg-black/95 flex items-center justify-center"
               >
                 <img
                   src={item.mediaUrl}
@@ -802,9 +898,7 @@ export default function Shop() {
         </div>
       </section>
 
-      {/* ========================================================
-          MODAL DE AUTENTICAÇÃO DO ADMINISTRADOR
-         ======================================================== */}
+      {/* MODAL ADMIN */}
       {showAuthModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
           <Card className="w-full max-w-sm border-primary/40 bg-zinc-950 p-6 text-zinc-200">
@@ -816,6 +910,7 @@ export default function Shop() {
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={() => setShowAuthModal(false)}
                 className="text-zinc-400 hover:text-white"
               >
@@ -845,6 +940,7 @@ export default function Shop() {
 
               <div className="flex justify-end gap-2 pt-2">
                 <Button
+                  type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => setShowAuthModal(false)}
@@ -853,6 +949,7 @@ export default function Shop() {
                   Cancelar
                 </Button>
                 <Button
+                  type="button"
                   size="sm"
                   onClick={handleLoginAdmin}
                   className="bg-primary text-black font-cinzel text-xs uppercase font-bold"
@@ -865,17 +962,16 @@ export default function Shop() {
         </div>
       )}
 
-      {/* ========================================================
-          MODAL DE EVENTO COM VALIDAÇÃO ROBUSTA
-         ======================================================== */}
+      {/* MODAL EVENTO COM VALIDAÇÃO DE DATA / HORA FUTURA */}
       {isAdmin && activeModal === "event" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
-          <Card className="w-full max-w-md border-primary/40 bg-zinc-950 p-6 text-zinc-200">
+          <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto border-primary/40 bg-zinc-950 p-6 text-zinc-200">
             <div className="flex items-center justify-between border-b border-primary/20 pb-3 mb-4">
               <h3 className="font-cinzel text-lg text-primary">
-                {editingId ? "Editar Atividade" : "Nova Atividade no Calendário"}
+                {editingId ? "Substituir Atividade" : "Nova Atividade no Calendário"}
               </h3>
               <button
+                type="button"
                 onClick={() => {
                   setActiveModal(null);
                   setFormValidationMsg(null);
@@ -886,7 +982,6 @@ export default function Shop() {
               </button>
             </div>
 
-            {/* Alerta de Validação */}
             {formValidationMsg && (
               <div className="mb-4 flex items-center gap-2 rounded-md border border-red-500/40 bg-red-500/10 p-2.5 text-xs text-red-300">
                 <AlertTriangle className="h-4 w-4 shrink-0 text-red-400" />
@@ -910,27 +1005,76 @@ export default function Shop() {
                 />
               </div>
 
+              <div>
+                <label className="text-xs text-zinc-400 block mb-1">
+                  Imagem de Destaque do Evento (Opcional)
+                </label>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-cinzel uppercase text-primary hover:bg-primary/20">
+                    <Upload className="h-4 w-4" />
+                    Escolher Imagem
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFileUpload(e, "event")}
+                      className="hidden"
+                    />
+                  </label>
+                  <span className="text-[11px] text-zinc-400 truncate max-w-[200px]">
+                    {eventForm.imageUrl ? "Imagem carregada!" : "Nenhum arquivo"}
+                  </span>
+                </div>
+
+                {eventForm.imageUrl && (
+                  <div className="mt-2.5 relative aspect-[16/10] w-full overflow-hidden rounded border border-primary/20 bg-black/95 flex items-center justify-center">
+                    <img
+                      src={eventForm.imageUrl}
+                      alt=""
+                      aria-hidden="true"
+                      className="absolute inset-0 h-full w-full object-cover blur-md opacity-30 scale-110"
+                    />
+                    <img
+                      src={eventForm.imageUrl}
+                      alt="Prévia"
+                      className="relative z-10 max-h-full max-w-full object-contain p-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setEventForm({ ...eventForm, imageUrl: "" })}
+                      className="absolute top-2 right-2 z-20 rounded-full bg-black/80 p-1 text-zinc-300 hover:text-red-400"
+                      title="Remover imagem"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs text-zinc-400">
                     Data <span className="text-primary">*</span>
                   </label>
                   <Input
+                    type="date"
+                    min={getTodayIsoDate()} // Bloqueia dias anteriores no calendário
                     value={eventForm.date || ""}
                     onChange={(e) => {
                       setFormValidationMsg(null);
                       setEventForm({ ...eventForm, date: e.target.value });
                     }}
-                    placeholder="Ex: 15 de Outubro"
                     className="bg-black/60 border-primary/20 text-xs"
                   />
                 </div>
                 <div>
                   <label className="text-xs text-zinc-400">Horário</label>
                   <Input
-                    value={eventForm.time || ""}
-                    onChange={(e) => setEventForm({ ...eventForm, time: e.target.value })}
-                    placeholder="Ex: 21:00"
+                    type="time"
+                    value={eventForm.time || "20:00"}
+                    onChange={(e) => {
+                      setFormValidationMsg(null);
+                      setEventForm({ ...eventForm, time: e.target.value });
+                    }}
                     className="bg-black/60 border-primary/20 text-xs"
                   />
                 </div>
@@ -986,6 +1130,7 @@ export default function Shop() {
 
             <div className="mt-6 flex justify-end gap-2">
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => {
@@ -997,34 +1142,34 @@ export default function Shop() {
                 Cancelar
               </Button>
               <Button
+                type="button"
                 size="sm"
-                onClick={handleSaveEvent}
+                onClick={handleSaveEventDirect}
                 className="bg-primary text-black font-cinzel text-xs uppercase font-bold"
               >
-                Salvar Atividade
+                {editingId ? "Substituir Atividade" : "Salvar Atividade"}
               </Button>
             </div>
           </Card>
         </div>
       )}
 
-      {/* ========================================================
-          MODAL DE VÍDEO / FOTO COM VALIDAÇÃO
-         ======================================================== */}
+      {/* MODAL MÍDIA */}
       {isAdmin && (activeModal === "video" || activeModal === "photo") && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
-          <Card className="w-full max-w-md border-primary/40 bg-zinc-950 p-6 text-zinc-200">
+          <Card className="w-full max-w-md border-primary/40 bg-zinc-950 p-6 text-zinc-200 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-primary/20 pb-3 mb-4">
               <h3 className="font-cinzel text-lg text-primary">
                 {editingId
                   ? activeModal === "video"
-                    ? "Editar Vídeo"
-                    : "Editar Foto"
+                    ? "Substituir Vídeo"
+                    : "Substituir Foto"
                   : activeModal === "video"
                   ? "Adicionar Novo Vídeo"
                   : "Adicionar Nova Foto"}
               </h3>
               <button
+                type="button"
                 onClick={() => {
                   setActiveModal(null);
                   setFormValidationMsg(null);
@@ -1035,7 +1180,6 @@ export default function Shop() {
               </button>
             </div>
 
-            {/* Alerta de Validação */}
             {formValidationMsg && (
               <div className="mb-4 flex items-center gap-2 rounded-md border border-red-500/40 bg-red-500/10 p-2.5 text-xs text-red-300">
                 <AlertTriangle className="h-4 w-4 shrink-0 text-red-400" />
@@ -1043,7 +1187,7 @@ export default function Shop() {
               </div>
             )}
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
                 <label className="text-xs text-zinc-400">
                   Título <span className="text-primary">*</span>
@@ -1070,39 +1214,100 @@ export default function Shop() {
               </div>
 
               <div>
-                <label className="text-xs text-zinc-400">
-                  {activeModal === "video" ? "URL do Vídeo (MP4 ou Link direto)" : "Caminho / URL da Imagem"}{" "}
-                  <span className="text-primary">*</span>
+                <label className="text-xs text-zinc-400 block mb-1">
+                  {activeModal === "video"
+                    ? "Opção 1: Upload do Arquivo de Vídeo (MP4, WEBM)"
+                    : "Upload do Arquivo de Imagem"}
                 </label>
-                <Input
-                  value={mediaForm.mediaUrl || ""}
-                  onChange={(e) => {
-                    setFormValidationMsg(null);
-                    setMediaForm({ ...mediaForm, mediaUrl: e.target.value });
-                  }}
-                  placeholder={
-                    activeModal === "video"
-                      ? "/videos/ritual.mp4 ou https://..."
-                      : "/images/rituals/foto.jpg"
-                  }
-                  className="bg-black/60 border-primary/20 text-xs"
-                />
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-cinzel uppercase text-primary hover:bg-primary/20">
+                    {isUploading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="h-4 w-4" />
+                    )}
+                    {isUploading ? "Carregando..." : "Escolher Arquivo"}
+                    <input
+                      type="file"
+                      accept={activeModal === "video" ? "video/*" : "image/*"}
+                      onChange={(e) => handleFileUpload(e, "media")}
+                      className="hidden"
+                      disabled={isUploading}
+                    />
+                  </label>
+                  <span className="text-[11px] text-zinc-400 truncate max-w-[200px]">
+                    {mediaForm.mediaUrl ? "Arquivo selecionado!" : "Nenhum arquivo"}
+                  </span>
+                </div>
               </div>
+
+              {activeModal === "video" && (
+                <div>
+                  <label className="text-xs text-zinc-400 block mb-1">
+                    Opção 2: Ou Cole a URL Direta do Vídeo
+                  </label>
+                  <Input
+                    value={mediaForm.mediaUrl || ""}
+                    onChange={(e) => {
+                      setFormValidationMsg(null);
+                      setMediaForm({ ...mediaForm, mediaUrl: e.target.value });
+                    }}
+                    placeholder="https://exemplo.com/video.mp4"
+                    className="bg-black/60 border-primary/20 text-xs"
+                  />
+                </div>
+              )}
+
+              {mediaForm.mediaUrl && (
+                <div className="mt-3 relative aspect-[16/10] w-full overflow-hidden rounded border border-primary/20 bg-black/95 flex items-center justify-center">
+                  {activeModal === "video" ? (
+                    <video
+                      src={`${mediaForm.mediaUrl}#t=0.5`}
+                      preload="metadata"
+                      controls
+                      className="h-full w-full object-contain"
+                    />
+                  ) : (
+                    <>
+                      <img
+                        src={mediaForm.mediaUrl}
+                        alt=""
+                        aria-hidden="true"
+                        className="absolute inset-0 h-full w-full object-cover blur-md opacity-30 scale-110"
+                      />
+                      <img
+                        src={mediaForm.mediaUrl}
+                        alt="Preview"
+                        className="relative z-10 max-h-full max-w-full object-contain p-1"
+                      />
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setMediaForm({ ...mediaForm, mediaUrl: "" })}
+                    className="absolute top-2 right-2 z-20 rounded-full bg-black/80 p-1 text-zinc-300 hover:text-red-400"
+                    title="Remover"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
 
               <div>
                 <label className="text-xs text-zinc-400">Descrição</label>
                 <Textarea
                   value={mediaForm.description || ""}
                   onChange={(e) => setMediaForm({ ...mediaForm, description: e.target.value })}
-                  placeholder="Breve descrição sobre a mídia..."
+                  placeholder="Breve descrição sobre o conteúdo..."
                   className="bg-black/60 border-primary/20 text-xs"
-                  rows={3}
+                  rows={2}
                 />
               </div>
             </div>
 
             <div className="mt-6 flex justify-end gap-2">
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => {
@@ -1114,18 +1319,24 @@ export default function Shop() {
                 Cancelar
               </Button>
               <Button
+                type="button"
                 size="sm"
-                onClick={activeModal === "video" ? handleSaveVideo : handleSavePhoto}
+                disabled={isUploading}
+                onClick={() => handleSaveMediaDirect(activeModal === "video" ? "video" : "image")}
                 className="bg-primary text-black font-cinzel text-xs uppercase font-bold"
               >
-                Salvar Mídia
+                {isUploading
+                  ? "Carregando..."
+                  : editingId
+                  ? "Substituir Arquivo"
+                  : "Salvar Arquivo"}
               </Button>
             </div>
           </Card>
         </div>
       )}
 
-      {/* Modal / Lightbox de Expansão de Imagem/Vídeo */}
+      {/* LIGHTBOX */}
       {expandedMedia && (
         <div
           onClick={() => setExpandedMedia(null)}
@@ -1136,6 +1347,7 @@ export default function Shop() {
             className="relative max-h-[90vh] max-w-[90vw] overflow-hidden rounded-lg border border-primary/30 bg-zinc-950 p-2 shadow-[0_0_50px_rgba(0,0,0,0.8)] cursor-default"
           >
             <button
+              type="button"
               onClick={() => setExpandedMedia(null)}
               className="absolute top-4 right-4 z-30 rounded-full bg-black/70 p-2 text-zinc-300 hover:bg-primary hover:text-black transition-colors"
               title="Fechar"
