@@ -58,7 +58,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
               <Link href="/admin/doacoes" className="inline-flex">
                 <Button variant="outline" size="sm" className="h-10 border-primary/40 text-white hover:bg-primary hover:text-black font-cinzel tracking-wider text-xs">
-                  Membros
+                  Área Administrativa
                 </Button>
               </Link>
             </div>
