@@ -33,10 +33,23 @@ function readEnvValue(key: string) {
   return undefined;
 }
 
-const adminToken =
+let adminToken =
   process.env.ADMIN_TOKEN ||
-  readEnvValue("ADMIN_TOKEN") ||
-  "Domus@930324";
+  readEnvValue("ADMIN_TOKEN");
+
+function saveAdminToken(nextToken: string) {
+  const envPath = path.resolve(process.cwd(), ".env");
+  const currentContent = fsSync.existsSync(envPath)
+    ? fsSync.readFileSync(envPath, "utf8")
+    : "";
+  const nextLine = `ADMIN_TOKEN=${nextToken}`;
+  const updatedContent = /^ADMIN_TOKEN=.*$/m.test(currentContent)
+    ? currentContent.replace(/^ADMIN_TOKEN=.*$/m, nextLine)
+    : `${currentContent.trimEnd()}${currentContent ? "\n" : ""}${nextLine}\n`;
+
+  fsSync.writeFileSync(envPath, updatedContent, "utf8");
+  adminToken = nextToken;
+}
 
 type DonationRecord = {
   id: string;
@@ -219,6 +232,36 @@ async function startServer() {
 
   app.use(express.json({ limit: "64kb" }));
 
+  app.post("/api/admin/login", (req, res) => {
+    const submittedToken = typeof req.body?.token === "string" ? req.body.token : "";
+
+    if (!adminToken || submittedToken !== adminToken) {
+      return res.status(401).json({ message: "Senha de administrador incorreta." });
+    }
+
+    return res.json({ token: adminToken });
+  });
+
+  app.post("/api/admin/change-password", (req, res) => {
+    if (!isAdminRequest(req)) {
+      return res.status(401).json({ message: "Acesso administrativo não autorizado." });
+    }
+
+    const currentPassword = typeof req.body?.currentPassword === "string" ? req.body.currentPassword : "";
+    const newPassword = typeof req.body?.newPassword === "string" ? req.body.newPassword.trim() : "";
+
+    if (currentPassword !== adminToken) {
+      return res.status(400).json({ message: "A senha atual está incorreta." });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: "A nova senha deve ter pelo menos 8 caracteres." });
+    }
+
+    saveAdminToken(newPassword);
+    return res.json({ message: "Senha alterada com sucesso.", token: newPassword });
+  });
+
   app.post("/api/donations", async (req, res) => {
     const body = req.body || {};
     const { donation, invalidFields } = buildDonationRecord(body);
@@ -361,7 +404,6 @@ async function startServer() {
   const port = Number(process.env.PORT || (process.env.NODE_ENV === "production" ? 3000 : 3001));
 
   server.listen(port, () => {
-    console.log(`[AUTH] Chave Admin ativa: "${adminToken}"`);
     console.log(`Server running on http://localhost:${port}/`);
   });
 }

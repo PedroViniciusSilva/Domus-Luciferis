@@ -8,6 +8,7 @@ import {
   Calendar as CalendarIcon,
   Edit2,
   Home,
+  KeyRound,
   Loader2,
   Lock,
   MapPin,
@@ -140,8 +141,6 @@ const DEFAULT_PHOTOS: GalleryItem[] = [
   },
 ];
 
-const ADMIN_KEY = "admin123";
-
 // Formata 'YYYY-MM-DD' para 'DD de Mês de AAAA'
 function formatToDisplayDate(dateString: string): string {
   if (!dateString) return "";
@@ -209,11 +208,16 @@ export default function Schedule() {
   }, [photos]);
 
   const [isAdmin, setIsAdmin] = useState<boolean>(() => {
-    return sessionStorage.getItem("domus_is_admin") === "true";
+    return Boolean(sessionStorage.getItem("domus_admin_token"));
   });
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [adminPasswordInput, setAdminPasswordInput] = useState("");
   const [authError, setAuthError] = useState("");
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordMessage, setPasswordMessage] = useState("");
 
   const [filterPeriod, setFilterPeriod] = useState<"todos" | "semana" | "mes">("todos");
   const [expandedMedia, setExpandedMedia] = useState<GalleryItem | null>(null);
@@ -241,21 +245,45 @@ export default function Schedule() {
     mediaUrl: "",
   });
 
-  function handleLoginAdmin() {
-    if (adminPasswordInput === ADMIN_KEY) {
+  async function handleLoginAdmin() {
+    try {
+      const response = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: adminPasswordInput.trim() }),
+      });
+      if (!response.ok) throw new Error();
+      const data = await response.json();
+      sessionStorage.setItem("domus_admin_token", data.token);
       setIsAdmin(true);
-      sessionStorage.setItem("domus_is_admin", "true");
       setShowAuthModal(false);
       setAdminPasswordInput("");
       setAuthError("");
-    } else {
+    } catch {
       setAuthError("Senha de administrador incorreta.");
     }
   }
 
   function handleLogoutAdmin() {
     setIsAdmin(false);
-    sessionStorage.removeItem("domus_is_admin");
+    sessionStorage.removeItem("domus_admin_token");
+  }
+
+  async function handleChangePassword() {
+    setPasswordMessage("");
+    if (newPassword !== confirmPassword) {
+      setPasswordMessage("A confirmação da nova senha não confere.");
+      return;
+    }
+    const response = await fetch("/api/admin/change-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessionStorage.getItem("domus_admin_token") || ""}` },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    const data = await response.json();
+    if (!response.ok) { setPasswordMessage(data.message || "Não foi possível alterar a senha."); return; }
+    sessionStorage.setItem("domus_admin_token", data.token);
+    setCurrentPassword(""); setNewPassword(""); setConfirmPassword(""); setPasswordMessage(data.message);
   }
 
   function getWhatsAppEventUrl(eventTitle: string) {
@@ -459,14 +487,14 @@ export default function Schedule() {
         </div>
 
         {isAdmin ? (
-          <Button
-            onClick={handleLogoutAdmin}
-            variant="outline"
-            size="sm"
-            className="border-primary/40 bg-primary/10 font-cinzel text-xs uppercase tracking-wider text-primary hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/40"
-          >
-            <Unlock className="mr-1.5 h-3.5 w-3.5" /> Sair do Admin
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => { setPasswordMessage(""); setShowPasswordModal(true); }} variant="outline" size="sm" className="border-primary/30 text-primary">
+              <KeyRound className="mr-1.5 h-3.5 w-3.5" /> Alterar senha
+            </Button>
+            <Button onClick={handleLogoutAdmin} variant="outline" size="sm" className="border-primary/40 bg-primary/10 font-cinzel text-xs uppercase tracking-wider text-primary hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/40">
+              <Unlock className="mr-1.5 h-3.5 w-3.5" /> Sair do Admin
+            </Button>
+          </div>
         ) : (
           <Button
             onClick={() => {
@@ -482,6 +510,24 @@ export default function Schedule() {
           </Button>
         )}
       </div>
+
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
+          <Card className="w-full max-w-md border-primary/40 bg-zinc-950 p-6 text-zinc-200">
+            <CardTitle className="mb-5 font-cinzel text-lg text-primary">Alterar senha</CardTitle>
+            <div className="space-y-3">
+              <Input type="password" placeholder="Senha atual" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+              <Input type="password" placeholder="Nova senha (mínimo 8 caracteres)" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+              <Input type="password" placeholder="Confirme a nova senha" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+              {passwordMessage && <p className="text-xs text-primary">{passwordMessage}</p>}
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setShowPasswordModal(false)}>Cancelar</Button>
+                <Button onClick={handleChangePassword} className="bg-primary text-black">Salvar nova senha</Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* Título Principal */}
       <section className="mx-auto mb-16 max-w-4xl text-center">
