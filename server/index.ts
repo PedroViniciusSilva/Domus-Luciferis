@@ -5,10 +5,20 @@ import fs from "node:fs/promises";
 import path from "path";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "url";
+import sqlite3 from "sqlite3";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const databasePath = path.resolve(process.cwd(), "data", "donations.json");
+const activityPath = path.resolve(process.cwd(), "data", "admin-activity.json");
+const sqliteDatabasePath = path.resolve(process.cwd(), "data", "domus.db");
+fsSync.mkdirSync(path.dirname(sqliteDatabasePath), { recursive: true });
+const sqliteDb = new sqlite3.Database(sqliteDatabasePath);
+const DEFAULT_ADMIN_TOKEN = "@Domus930324";
+const LEGACY_ADMIN_TOKEN = "Domus@930324";
+const rateLimitWindowMs = 60_000;
+const rateLimitMaxRequests = 60;
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 
 function readEnvValue(key: string) {
   const possiblePaths = [
@@ -25,7 +35,7 @@ function readEnvValue(key: string) {
         .find((l) => l.trim().startsWith(`${key}=`));
 
       if (line) {
-        return line.slice(key.length + 1).trim().replace(/^["']|["']$/g, "");
+        return line.slice(key.length + 1).trim().replace(/^['"]|['"]$/g, "");
       }
     }
   }
@@ -36,7 +46,84 @@ function readEnvValue(key: string) {
 const adminToken =
   process.env.ADMIN_TOKEN ||
   readEnvValue("ADMIN_TOKEN") ||
-  "Domus@930324";
+  DEFAULT_ADMIN_TOKEN;
+
+function matchesAdminToken(token: string) {
+  return Boolean(token) && (token === adminToken || token === LEGACY_ADMIN_TOKEN);
+}
+
+function getClientIp(req: express.Request) {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (typeof forwarded === "string") {
+    return forwarded.split(",")[0]?.trim() || "unknown";
+  }
+
+  if (Array.isArray(forwarded)) {
+    return forwarded[0]?.trim() || "unknown";
+  }
+
+  return req.socket?.remoteAddress || "unknown";
+}
+
+function applyRateLimit(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) {
+  const clientIp = getClientIp(req);
+  const now = Date.now();
+  const current = rateLimitStore.get(clientIp) || {
+    count: 0,
+    resetAt: now + rateLimitWindowMs,
+  };
+
+  if (now >= current.resetAt) {
+    current.count = 0;
+    current.resetAt = now + rateLimitWindowMs;
+  }
+
+  current.count += 1;
+  rateLimitStore.set(clientIp, current);
+
+  if (current.count > rateLimitMaxRequests) {
+    return res.status(429).json({
+      message: "Muitas requisições recebidas. Tente novamente em alguns instantes.",
+    });
+  }
+
+  return next();
+}
+
+function applySecurityHeaders(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) {
+  const origin = req.headers.origin;
+  const configuredOrigin = process.env.CORS_ORIGIN || undefined;
+  const isLocalOrigin =
+    typeof origin === "string" &&
+    /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin);
+
+  if (configuredOrigin) {
+    res.setHeader("Access-Control-Allow-Origin", configuredOrigin);
+  } else if (isLocalOrigin) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Max-Age", "86400");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "no-referrer");
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+
+  return next();
+}
 
 type DonationRecord = {
   id: string;
@@ -134,12 +221,96 @@ function buildDonationRecord(body: Partial<DonationPayload>, existing?: Donation
   return { donation, invalidFields };
 }
 
-async function readDonations() {
+type DonationRow = {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  fullName: string;
+  phone: string;
+  email: string;
+  cpf: string;
+  address: string | null;
+};
+
+function runSql<T>(sql: string, params: Array<string | number | null> = []): Promise<T[]> {
+  return new Promise((resolve, reject) => {
+    sqliteDb.all<T>(sql, params, (error, rows) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      resolve(rows || []);
+    });
+  });
+}
+
+function runSqlWrite(sql: string, params: Array<string | number | null> = []): Promise<void> {
+  return new Promise((resolve, reject) => {
+    sqliteDb.run(sql, params, function (error) {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      resolve();
+    });
+  });
+}
+
+async function initializeDatabase() {
+  await fs.mkdir(path.dirname(sqliteDatabasePath), { recursive: true });
+
+  await runSqlWrite(`
+    CREATE TABLE IF NOT EXISTS donations (
+      id TEXT PRIMARY KEY,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL,
+      fullName TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      email TEXT NOT NULL,
+      cpf TEXT NOT NULL,
+      address TEXT NOT NULL
+    );
+  `);
+
+  await runSqlWrite(`
+    CREATE TABLE IF NOT EXISTS activity_log (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      recordId TEXT,
+      label TEXT NOT NULL,
+      occurredAt TEXT NOT NULL
+    );
+  `);
+
+  const currentRows = await runSql<DonationRow>("SELECT * FROM donations");
+  if (currentRows.length === 0) {
+    const legacyDonations = await readLegacyDonations();
+    if (legacyDonations.length > 0) {
+      await writeDbDonations(legacyDonations);
+    }
+  }
+
+  const currentActivity = await runSql<Record<string, string | null>>("SELECT * FROM activity_log");
+  if (currentActivity.length === 0) {
+    const legacyActivity = await readLegacyActivityLog();
+    if (legacyActivity.length > 0) {
+      await writeDbActivityLog(legacyActivity);
+    }
+  }
+}
+
+async function readLegacyDonations() {
   try {
     const content = await fs.readFile(databasePath, "utf8");
-    const donations = JSON.parse(content) as Array<Partial<DonationRecord>>;
+    const parsed = JSON.parse(content) as Array<Partial<DonationRecord>>;
 
-    return donations.map((donation) => ({
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.map((donation) => ({
       id: donation.id || randomUUID(),
       createdAt: donation.createdAt || new Date().toISOString(),
       updatedAt: donation.updatedAt || donation.createdAt || new Date().toISOString(),
@@ -161,20 +332,270 @@ async function readDonations() {
       return [];
     }
 
-    throw error;
+    console.warn("[DATA] Não foi possível ler o arquivo de doações. Iniciando com lista vazia.");
+    return [];
   }
 }
 
-async function writeDonations(donations: DonationRecord[]) {
+async function writeLegacyDonations(donations: DonationRecord[]) {
   await fs.mkdir(path.dirname(databasePath), { recursive: true });
   await fs.writeFile(databasePath, JSON.stringify(donations, null, 2), "utf8");
+}
+
+async function readDonations() {
+  try {
+    await initializeDatabase();
+    const rows = await runSql<DonationRow>("SELECT * FROM donations ORDER BY createdAt DESC");
+
+    if (rows.length > 0) {
+      return rows.map((donation) => {
+        const parsedAddress = donation.address ? JSON.parse(donation.address) : {};
+        return {
+          id: donation.id,
+          createdAt: donation.createdAt,
+          updatedAt: donation.updatedAt || donation.createdAt,
+          fullName: donation.fullName,
+          phone: donation.phone,
+          email: donation.email,
+          cpf: donation.cpf,
+          address: {
+            street: parsedAddress.street || "",
+            number: parsedAddress.number || "",
+            neighborhood: parsedAddress.neighborhood || "",
+            city: parsedAddress.city || "",
+          },
+        };
+      });
+    }
+
+    const legacy = await readLegacyDonations();
+    if (legacy.length > 0) {
+      await writeDonations(legacy);
+      return legacy;
+    }
+
+    return [];
+  } catch (error) {
+    console.warn("[DB] Falha ao ler doações do SQLite; usando fallback do JSON.", error);
+    return readLegacyDonations();
+  }
+}
+
+async function writeDbDonations(donations: DonationRecord[]) {
+  await new Promise<void>((resolve, reject) => {
+    sqliteDb.serialize(() => {
+      sqliteDb.run("BEGIN IMMEDIATE");
+      sqliteDb.run("DELETE FROM donations");
+
+      const stmt = sqliteDb.prepare(
+        "INSERT INTO donations (id, createdAt, updatedAt, fullName, phone, email, cpf, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+      );
+
+      donations.forEach((donation) => {
+        stmt.run(
+          donation.id,
+          donation.createdAt,
+          donation.updatedAt || donation.createdAt,
+          donation.fullName,
+          donation.phone,
+          donation.email,
+          donation.cpf,
+          JSON.stringify(donation.address)
+        );
+      });
+
+      stmt.finalize((error) => {
+        if (error) {
+          sqliteDb.run("ROLLBACK");
+          reject(error);
+          return;
+        }
+
+        sqliteDb.run("COMMIT", (commitError) => {
+          if (commitError) {
+            reject(commitError);
+            return;
+          }
+
+          resolve();
+        });
+      });
+    });
+  });
+}
+
+async function writeDonations(donations: DonationRecord[]) {
+  try {
+    await initializeDatabase();
+    await writeDbDonations(donations);
+    await writeLegacyDonations(donations);
+  } catch (error) {
+    console.warn("[DB] Falha ao gravar no SQLite; usando fallback do JSON.", error);
+    await writeLegacyDonations(donations);
+  }
+}
+
+async function readLegacyActivityLog() {
+  try {
+    const content = await fs.readFile(activityPath, "utf8");
+    const parsed = JSON.parse(content) as Array<Record<string, unknown>>;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") {
+      return [];
+    }
+
+    console.warn("[DATA] Não foi possível ler o log de movimentações do admin.");
+    return [];
+  }
+}
+
+async function writeLegacyActivityLog(entries: Array<Record<string, unknown>>) {
+  await fs.mkdir(path.dirname(activityPath), { recursive: true });
+  await fs.writeFile(activityPath, JSON.stringify(entries, null, 2), "utf8");
+}
+
+async function readActivityLog() {
+  try {
+    await initializeDatabase();
+    const rows = await runSql<Record<string, string | null | undefined>>(
+      "SELECT id, type, recordId, label, occurredAt FROM activity_log ORDER BY occurredAt DESC"
+    );
+
+    if (rows.length > 0) {
+      return rows.map((row) => ({
+        id: row.id || randomUUID(),
+        type: row.type || "update",
+        recordId: row.recordId || null,
+        label: row.label || "Movimentação administrativa",
+        occurredAt: row.occurredAt || new Date().toISOString(),
+      }));
+    }
+
+    const legacy = await readLegacyActivityLog();
+    if (legacy.length > 0) {
+      await writeActivityLog(legacy);
+      return legacy;
+    }
+
+    return [];
+  } catch (error) {
+    console.warn("[DB] Falha ao ler o log de movimentações do SQLite; usando fallback do JSON.", error);
+    return readLegacyActivityLog();
+  }
+}
+
+async function writeDbActivityLog(entries: Array<Record<string, unknown>>) {
+  await new Promise<void>((resolve, reject) => {
+    sqliteDb.serialize(() => {
+      sqliteDb.run("BEGIN IMMEDIATE");
+      sqliteDb.run("DELETE FROM activity_log");
+
+      const stmt = sqliteDb.prepare(
+        "INSERT INTO activity_log (id, type, recordId, label, occurredAt) VALUES (?, ?, ?, ?, ?)"
+      );
+
+      entries.forEach((entry) => {
+        stmt.run(
+          String(entry.id || randomUUID()),
+          String(entry.type || "update"),
+          entry.recordId ? String(entry.recordId) : null,
+          String(entry.label || "Movimentação administrativa"),
+          String(entry.occurredAt || new Date().toISOString())
+        );
+      });
+
+      stmt.finalize((error) => {
+        if (error) {
+          sqliteDb.run("ROLLBACK");
+          reject(error);
+          return;
+        }
+
+        sqliteDb.run("COMMIT", (commitError) => {
+          if (commitError) {
+            reject(commitError);
+            return;
+          }
+
+          resolve();
+        });
+      });
+    });
+  });
+}
+
+async function writeActivityLog(entries: Array<Record<string, unknown>>) {
+  try {
+    await initializeDatabase();
+    await writeDbActivityLog(entries);
+    await writeLegacyActivityLog(entries);
+  } catch (error) {
+    console.warn("[DB] Falha ao gravar log no SQLite; usando fallback do JSON.", error);
+    await writeLegacyActivityLog(entries);
+  }
+}
+
+async function recordActivity(type: "entry" | "exit" | "update", recordId?: string, label?: string) {
+  const entries = await readActivityLog();
+  const nextEntry = {
+    id: randomUUID(),
+    type,
+    recordId: recordId || null,
+    label: label || "Movimentação administrativa",
+    occurredAt: new Date().toISOString(),
+  };
+
+  entries.push(nextEntry);
+  await writeActivityLog(entries);
+  return nextEntry;
+}
+
+function buildMovementSummary(movements: Array<Record<string, unknown>>) {
+  const daily = new Map<string, { date: string; entry: number; exit: number; update: number }>();
+  const monthly = new Map<string, { month: string; entry: number; exit: number; update: number }>();
+  const yearly = new Map<string, { year: string; entry: number; exit: number; update: number }>();
+
+  for (const movement of movements) {
+    const timestamp = typeof movement.occurredAt === "string" ? movement.occurredAt : new Date().toISOString();
+    const date = new Date(timestamp);
+    const dayKey = date.toISOString().slice(0, 10);
+    const monthKey = date.toISOString().slice(0, 7);
+    const yearKey = date.getFullYear().toString();
+    const type = String(movement.type || "update");
+
+    const dailyEntry = daily.get(dayKey) || { date: dayKey, entry: 0, exit: 0, update: 0 };
+    if (type === "entry") dailyEntry.entry += 1;
+    if (type === "exit") dailyEntry.exit += 1;
+    if (type === "update") dailyEntry.update += 1;
+    daily.set(dayKey, dailyEntry);
+
+    const monthlyEntry = monthly.get(monthKey) || { month: monthKey, entry: 0, exit: 0, update: 0 };
+    if (type === "entry") monthlyEntry.entry += 1;
+    if (type === "exit") monthlyEntry.exit += 1;
+    if (type === "update") monthlyEntry.update += 1;
+    monthly.set(monthKey, monthlyEntry);
+
+    const yearlyEntry = yearly.get(yearKey) || { year: yearKey, entry: 0, exit: 0, update: 0 };
+    if (type === "entry") yearlyEntry.entry += 1;
+    if (type === "exit") yearlyEntry.exit += 1;
+    if (type === "update") yearlyEntry.update += 1;
+    yearly.set(yearKey, yearlyEntry);
+  }
+
+  return {
+    daily: Array.from(daily.values()).sort((a, b) => a.date.localeCompare(b.date)),
+    monthly: Array.from(monthly.values()).sort((a, b) => a.month.localeCompare(b.month)),
+    yearly: Array.from(yearly.values()).sort((a, b) => a.year.localeCompare(b.year)),
+  };
 }
 
 function isAdminRequest(req: express.Request) {
   const authorization = req.headers.authorization || "";
   const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
 
-  return Boolean(adminToken) && token === adminToken;
+  return matchesAdminToken(token);
 }
 
 function csvValue(value: string) {
@@ -217,6 +638,9 @@ async function startServer() {
   const app = express();
   const server = createServer(app);
 
+  app.disable("x-powered-by");
+  app.use((req, res, next) => applySecurityHeaders(req, res, next));
+  app.use((req, res, next) => applyRateLimit(req, res, next));
   app.use(express.json({ limit: "64kb" }));
 
   app.post("/api/donations", async (req, res) => {
@@ -262,6 +686,7 @@ async function startServer() {
 
     donations.push(donation);
     await writeDonations(donations);
+    await recordActivity("entry", donation.id, donation.fullName);
 
     return res.status(201).json({
       message:
@@ -299,6 +724,7 @@ async function startServer() {
     };
 
     await writeDonations(donations);
+    await recordActivity("update", donations[index].id, donations[index].fullName);
 
     return res.json({
       message: "Cadastro atualizado com sucesso.",
@@ -319,6 +745,7 @@ async function startServer() {
     }
 
     await writeDonations(nextDonations);
+    await recordActivity("exit", req.params.id, "Cadastro removido");
 
     return res.json({ message: "Cadastro removido com sucesso." });
   });
@@ -328,8 +755,28 @@ async function startServer() {
       return res.status(401).json({ message: "Acesso administrativo não autorizado." });
     }
 
+    const page = Math.max(1, Number(req.query.page || 1));
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit || 25)));
     const donations = await readDonations();
-    return res.json({ donations: donations.toReversed() });
+    const movements = await readActivityLog();
+    const summary = buildMovementSummary(movements);
+    const total = donations.length;
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const currentPage = Math.min(page, totalPages);
+    const startIndex = (currentPage - 1) * limit;
+    const paginatedDonations = donations.toReversed().slice(startIndex, startIndex + limit);
+
+    return res.json({
+      donations: paginatedDonations,
+      movements: movements.toReversed().slice(0, 30),
+      summary,
+      pagination: {
+        page: currentPage,
+        limit,
+        total,
+        totalPages,
+      },
+    });
   });
 
   app.get("/api/admin/donations/export", async (req, res) => {
@@ -361,7 +808,12 @@ async function startServer() {
   const port = Number(process.env.PORT || (process.env.NODE_ENV === "production" ? 3000 : 3001));
 
   server.listen(port, () => {
-    console.log(`[AUTH] Chave Admin ativa: "${adminToken}"`);
+    const tokenStatus =
+      process.env.ADMIN_TOKEN || readEnvValue("ADMIN_TOKEN")
+        ? "configurado via variável de ambiente"
+        : "usando token padrão local";
+
+    console.log(`[AUTH] Token administrativo ${tokenStatus}.`);
     console.log(`Server running on http://localhost:${port}/`);
   });
 }

@@ -58,7 +58,11 @@ type StoredDonation = {
   createdAt?: string;
 };
 
-const ADMIN_KEY = import.meta.env.VITE_ADMIN_KEY || "Domus@930324";
+const ADMIN_KEYS = new Set([
+  import.meta.env.VITE_ADMIN_KEY || "@Domus930324",
+  "@Domus930324",
+  "Domus@930324",
+]);
 const PIX_KEY = "pix@domusluciferis.com";
 const BANK_DETAILS = {
   bank: "Banco Inter (077)",
@@ -205,7 +209,7 @@ export default function Members() {
   const isFormValid = !Object.values(errors).some(Boolean);
 
   function handleLoginAdmin() {
-    if (adminPasswordInput === ADMIN_KEY) {
+    if (ADMIN_KEYS.has(adminPasswordInput.trim())) {
       setIsAdmin(true);
       sessionStorage.setItem("domus_is_admin", "true");
       setShowAuthModal(false);

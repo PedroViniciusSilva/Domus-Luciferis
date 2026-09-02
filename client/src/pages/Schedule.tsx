@@ -140,7 +140,11 @@ const DEFAULT_PHOTOS: GalleryItem[] = [
   },
 ];
 
-const ADMIN_KEY = "admin123";
+const ADMIN_KEYS = new Set([
+  import.meta.env.VITE_ADMIN_KEY || "@Domus930324",
+  "@Domus930324",
+  "Domus@930324",
+]);
 
 // Formata 'YYYY-MM-DD' para 'DD de Mês de AAAA'
 function formatToDisplayDate(dateString: string): string {
@@ -242,7 +246,7 @@ export default function Schedule() {
   });
 
   function handleLoginAdmin() {
-    if (adminPasswordInput === ADMIN_KEY) {
+    if (ADMIN_KEYS.has(adminPasswordInput.trim())) {
       setIsAdmin(true);
       sessionStorage.setItem("domus_is_admin", "true");
       setShowAuthModal(false);
