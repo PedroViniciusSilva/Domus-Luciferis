@@ -138,10 +138,16 @@ Para usar: abra `/rituais`, clique em **Acesso Admin**, informe o
 Tambem e possivel trocar a senha pelo painel; em hospedagens com filesystem
 somente leitura, altere o segredo diretamente nas configuracoes do provedor.
 
+Na rota `/goetia`, o administrador autenticado pode adicionar, editar e
+excluir daemons, alterar dados, correspondencias, poderes, imagem e sigilo.
+O campo de categoria permite criar novas vertentes sem alterar o codigo das
+abas. Esses registros ficam no `localStorage` do navegador administrativo,
+preparados para uma futura migracao para a API.
+
 ## Dados, persistencia e seguranca
 
 - Cadastros de cestas ficam em `data/donations.json`.
-- Inventario, agenda, videos e fotos administrativas ficam no `localStorage`
+- Inventario, agenda, videos, fotos, rituais e daemons administrativos ficam no `localStorage`
   do navegador e nao sao sincronizados entre dispositivos.
 - Em producao, use armazenamento persistente e backup para `data/`.
 - Use HTTPS e restrinja o acesso ao painel administrativo.

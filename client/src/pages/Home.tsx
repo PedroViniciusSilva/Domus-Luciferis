@@ -59,7 +59,7 @@ export default function Home() {
             
             <motion.div variants={fadeIn}>
               <a 
-                href="https://chat.whatsapp.com/HhpYGYoCqkdDSrTpayzUjctex" 
+                href="https://chat.whatsapp.com/HhpYGYoCqkdDSrTpayzUjctex"
                 target="_blank" 
                 rel="noopener noreferrer"
               >
@@ -248,7 +248,7 @@ export default function Home() {
             transition={{ delay: 0.4 }}
           >
             <a 
-              href="https://chat.whatsapp.com/HhpYGYoCqkdDSrTpayzUjc" 
+              href="https://chat.whatsapp.com/HhpYGYoCqkdDSrTpayzUjc"
               target="_blank" 
               rel="noopener noreferrer"
             >

@@ -290,7 +290,7 @@ export default function Schedule() {
     const text = encodeURIComponent(
       `Saudações. Gostaria de informações para participar da atividade: ${eventTitle}.`
     );
-    return `https://chat.whatsapp.com/HhpYGYoCqkdDSrTpayzUjc?text=${text}`;
+    return `https://wa.me/556196023210?text=${text}`;
   }
 
   function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>, target: "event" | "media") {

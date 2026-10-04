@@ -272,7 +272,7 @@ export default function Rituals() {
     const text = encodeURIComponent(
       `Saudações. Gostaria de agendar uma consulta ao oráculo sobre o ritual: ${ritualTitle}.`
     );
-    return `https://chat.whatsapp.com/HhpYGYoCqkdDSrTpayzUjc?text=${text}`;
+    return `https://wa.me/556196023210?text=${text}`;
   }
 
   return (

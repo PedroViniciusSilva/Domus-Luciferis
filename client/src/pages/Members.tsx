@@ -64,7 +64,7 @@ type StoredDonation = {
   createdAt?: string;
 };
 
-const PIX_KEY = "pix@domusluciferis.com";
+const PIX_KEY = "cf8851df-7e0d-4af0-8247-6cf26cff3a98";
 const BANK_DETAILS = {
   bank: "Banco Inter (077)",
   agency: "0001",

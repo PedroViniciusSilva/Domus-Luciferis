@@ -1,5 +1,6 @@
 import { useRoute, useLocation } from "wouter";
-import { allEntities } from "@/data/daemons/entities";
+import { readManagedEntities } from "@/lib/goetiaAdmin";
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -9,7 +10,8 @@ import { ArrowLeft, Home } from "lucide-react";
 export default function EntityDetail() {
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/goetia/:slug");
-  const entity = allEntities.find((e) => e.slug === params?.slug);
+  const [entities] = useState(() => readManagedEntities());
+  const entity = entities.find((e) => e.slug === params?.slug);
 
   if (!entity) {
     return (
