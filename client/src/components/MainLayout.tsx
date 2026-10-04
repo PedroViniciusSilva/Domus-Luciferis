@@ -85,7 +85,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
             <a href="https://www.instagram.com/domusluciferis?igsh=MW00NmNyajZmM2dzdg%3D%3D" className="text-muted-foreground hover:text-primary transition-colors">Instagram</a>
             <a href="https://wa.me/556196023210" className="text-muted-foreground hover:text-primary transition-colors">WhatsApp</a>
             <a href="https://www.youtube.com/@domusluciferis" className="text-muted-foreground hover:text-primary transition-colors">YouTube</a>
-            <a href="https://email.domusluciferis.com" className="text-muted-foreground hover:text-primary transition-colors">Email</a>
+            {/* E-mail reservado para ativação futura. */}
+            {/* <a href="https://email.domusluciferis.com" className="text-muted-foreground hover:text-primary transition-colors">Email</a> */}
             <a href="https://www.tiktok.com/@domus.luciferis?_r=1&_t=ZS-9AHIdeTNGKY" className="text-muted-foreground hover:text-primary transition-colors">TikTok</a>
           </div>
           <p className="text-xs text-muted-foreground/50 uppercase tracking-widest">

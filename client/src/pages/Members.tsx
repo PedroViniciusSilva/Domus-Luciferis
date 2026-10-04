@@ -7,7 +7,6 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   AlertTriangle,
   ArrowLeft,
-  Building2,
   Calendar,
   CheckCircle2,
   Copy,
@@ -65,13 +64,6 @@ type StoredDonation = {
 };
 
 const PIX_KEY = "cf8851df-7e0d-4af0-8247-6cf26cff3a98";
-const BANK_DETAILS = {
-  bank: "Banco Inter (077)",
-  agency: "0001",
-  account: "1234567-8",
-  name: "Santuário Domus Luciferis",
-  cnpj: "00.000.000/0001-00",
-};
 
 const onlyDigits = (value: string) => value.replace(/\D/g, "");
 
@@ -121,7 +113,7 @@ export default function Members() {
   const [, setLocation] = useLocation();
 
   const [viewMode, setViewMode] = useState<"menu" | "receber" | "fazer">("menu");
-  const [donationMethod, setDonationMethod] = useState<"pix" | "banco" | "presencial">("pix");
+  const [donationMethod, setDonationMethod] = useState<"pix" | "presencial">("pix");
   const [copiedPix, setCopiedPix] = useState(false);
 
   // Formulário do Usuário
@@ -637,7 +629,7 @@ export default function Members() {
               </CardHeader>
               <CardContent className="p-6 pt-0">
                 <p className="text-xs text-zinc-400 leading-relaxed">
-                  Contribua via Pix, transferência bancária direta ou agende uma data para entregar cestas e alimentos em mãos no santuário.
+                  Contribua via Pix ou agende uma data para entregar cestas e alimentos em mãos no santuário.
                 </p>
               </CardContent>
             </div>
@@ -664,17 +656,6 @@ export default function Members() {
               }`}
             >
               <QrCode className="mr-1.5 h-4 w-4" /> Pix
-            </Button>
-            <Button
-              variant={donationMethod === "banco" ? "default" : "outline"}
-              onClick={() => setDonationMethod("banco")}
-              className={`font-cinzel text-xs uppercase tracking-wider ${
-                donationMethod === "banco"
-                  ? "bg-primary text-black font-bold"
-                  : "border-primary/20 text-zinc-300 hover:text-primary"
-              }`}
-            >
-              <Building2 className="mr-1.5 h-4 w-4" /> Transferência
             </Button>
             <Button
               variant={donationMethod === "presencial" ? "default" : "outline"}
@@ -730,43 +711,6 @@ export default function Members() {
               <div className="rounded border border-amber-500/20 bg-amber-500/10 p-3.5 text-xs text-amber-200 leading-relaxed">
                 <strong className="font-semibold text-amber-300">Aviso: </strong>
                 Após sua doação, você pode nos enviar o comprovante via WhatsApp para registrarmos sua contribuição nas firmezas do templo.
-              </div>
-            </Card>
-          )}
-
-          {donationMethod === "banco" && (
-            <Card className="border-primary/30 bg-zinc-950/90 p-6 md:p-8 text-zinc-200">
-              <div className="text-center mb-6">
-                <Building2 className="h-10 w-10 text-primary mx-auto mb-2" />
-                <h3 className="font-cinzel text-2xl text-primary">
-                  Transferência Bancária (TED / DOC)
-                </h3>
-                <p className="text-xs text-zinc-400 mt-1">
-                  Dados da conta institucional do templo.
-                </p>
-              </div>
-
-              <div className="space-y-3 rounded-lg border border-primary/20 bg-black/60 p-5 text-xs">
-                <div className="flex justify-between border-b border-primary/10 pb-2">
-                  <span className="text-zinc-400">Banco:</span>
-                  <span className="font-semibold text-zinc-200">{BANK_DETAILS.bank}</span>
-                </div>
-                <div className="flex justify-between border-b border-primary/10 pb-2">
-                  <span className="text-zinc-400">Agência:</span>
-                  <span className="font-semibold text-zinc-200">{BANK_DETAILS.agency}</span>
-                </div>
-                <div className="flex justify-between border-b border-primary/10 pb-2">
-                  <span className="text-zinc-400">Conta Corrente:</span>
-                  <span className="font-semibold text-zinc-200">{BANK_DETAILS.account}</span>
-                </div>
-                <div className="flex justify-between border-b border-primary/10 pb-2">
-                  <span className="text-zinc-400">Titular:</span>
-                  <span className="font-semibold text-zinc-200">{BANK_DETAILS.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-zinc-400">CNPJ:</span>
-                  <span className="font-semibold text-zinc-200">{BANK_DETAILS.cnpj}</span>
-                </div>
               </div>
             </Card>
           )}
