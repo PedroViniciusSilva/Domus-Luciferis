@@ -59,7 +59,7 @@ export default function Home() {
             
             <motion.div variants={fadeIn}>
               <a 
-                href="https://chat.whatsapp.com/HhpYGYoCqkdDSrTpayzUjctex"
+                href="https://chat.whatsapp.com/HhpYGYoCqkdDSrTpayzUjc"
                 target="_blank" 
                 rel="noopener noreferrer"
               >
