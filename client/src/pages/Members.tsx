@@ -308,6 +308,7 @@ export default function Members() {
           neighborhood: (editingRecord.neighborhood || "").trim(),
           city: (editingRecord.city || "").trim(),
         },
+        notes: (editingRecord.notes || "").trim(),
       }),
     });
 
@@ -576,7 +577,7 @@ export default function Members() {
                   className="absolute inset-0 h-full w-full object-cover blur-md opacity-30 scale-110"
                 />
                 <img
-                  src="/images/rituals/amarracao.jpg"
+                  src="/images/donation/doação.png"
                   alt="Receber Doação"
                   className="relative z-10 max-h-full max-w-full object-contain p-2 transition-transform duration-500 group-hover:scale-105"
                 />
@@ -618,7 +619,7 @@ export default function Members() {
                   className="absolute inset-0 h-full w-full object-cover blur-md opacity-30 scale-110"
                 />
                 <img
-                  src="/images/rituals/prosperidade.png"
+                  src="/images/donation/receber.png"
                   alt="Fazer Doação"
                   className="relative z-10 max-h-full max-w-full object-contain p-2 transition-transform duration-500 group-hover:scale-105"
                 />

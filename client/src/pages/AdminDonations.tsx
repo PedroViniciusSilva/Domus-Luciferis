@@ -179,7 +179,14 @@ export default function AdminDonations() {
 
   const [categories, setCategories] = useState<CategoryConfig[]>(() => {
     const saved = localStorage.getItem("domus_inventory_categories");
-    return saved ? JSON.parse(saved) : DEFAULT_CATEGORIES;
+    if (!saved) return DEFAULT_CATEGORIES;
+
+    try {
+      const parsed: CategoryConfig[] = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed : DEFAULT_CATEGORIES;
+    } catch {
+      return DEFAULT_CATEGORIES;
+    }
   });
 
   const [items, setItems] = useState<InventoryItem[]>(() => {
@@ -201,7 +208,14 @@ export default function AdminDonations() {
 
   const [movements, setMovements] = useState<StockMovement[]>(() => {
     const saved = localStorage.getItem("domus_inventory_movements");
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+
+    try {
+      const parsed: StockMovement[] = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
   });
 
   useEffect(() => {
@@ -254,6 +268,7 @@ export default function AdminDonations() {
     desc: "",
     subcategoriesText: "",
   });
+  const [categoryError, setCategoryError] = useState("");
 
   // Modal de Movimentação
   const [movementModal, setMovementModal] = useState<{
@@ -271,6 +286,7 @@ export default function AdminDonations() {
     reason: "",
     responsible: "Sacerdote / Administrador",
   });
+  const [movementError, setMovementError] = useState("");
 
   async function handleLogin() {
     const normalizedInput = passwordInput.trim();
@@ -325,6 +341,7 @@ export default function AdminDonations() {
   }
 
   function handleOpenCreateCategory() {
+    setCategoryError("");
     setEditingCategoryOrigin(null);
     setCategoryForm({
       name: "",
@@ -337,6 +354,7 @@ export default function AdminDonations() {
   function handleOpenEditCategory(cat: CategoryConfig, e?: React.MouseEvent) {
     if (e) e.stopPropagation();
     setEditingCategoryOrigin(cat);
+    setCategoryError("");
     setCategoryForm({
       name: cat.name,
       desc: cat.desc,
@@ -346,7 +364,11 @@ export default function AdminDonations() {
   }
 
   function handleSaveCategory() {
-    if (!categoryForm.name.trim()) return;
+    const categoryName = categoryForm.name.trim();
+    if (!categoryName) {
+      setCategoryError("Informe o nome da categoria.");
+      return;
+    }
 
     const newSubcategories = categoryForm.subcategoriesText
       .split(",")
@@ -354,10 +376,27 @@ export default function AdminDonations() {
       .filter((s) => s.length > 0);
 
     const formattedSubs = newSubcategories.length > 0 ? newSubcategories : ["Geral"];
+    const hasDuplicateSubcategory = new Set(formattedSubs.map((sub) => sub.toLowerCase())).size !== formattedSubs.length;
+
+    if (hasDuplicateSubcategory) {
+      setCategoryError("Não repita nomes de subcategorias.");
+      return;
+    }
+
+    const duplicateCategory = categories.some(
+      (category) =>
+        category.name.trim().toLowerCase() === categoryName.toLowerCase() &&
+        category.name !== editingCategoryOrigin?.name
+    );
+
+    if (duplicateCategory) {
+      setCategoryError("Já existe uma categoria com este nome.");
+      return;
+    }
 
     if (editingCategoryOrigin) {
       const oldCatName = editingCategoryOrigin.name;
-      const newCatName = categoryForm.name.trim();
+      const newCatName = categoryName;
       const oldSubs = editingCategoryOrigin.subcategories;
 
       const subcategoryRenameMap = new Map<string, string>();
@@ -401,7 +440,7 @@ export default function AdminDonations() {
       }
     } else {
       const newCat: CategoryConfig = {
-        name: categoryForm.name.trim(),
+        name: categoryName,
         desc: categoryForm.desc.trim(),
         subcategories: formattedSubs,
       };
@@ -410,6 +449,7 @@ export default function AdminDonations() {
 
     setShowCategoryModal(false);
     setEditingCategoryOrigin(null);
+    setCategoryError("");
   }
 
   function handleDeleteCategory(catName: string, e?: React.MouseEvent) {
@@ -485,9 +525,34 @@ export default function AdminDonations() {
     const targetCategory = itemForm.category;
     const targetSubcategory = itemForm.subcategory?.trim() || "Geral";
     const targetColor = (itemForm.colorVariant || "").trim();
-    const qty = Number(itemForm.quantity) || 0;
-    const uPrice = Number(itemForm.unitPrice) || 0;
-    const tPrice = itemForm.totalPrice && itemForm.totalPrice > 0 ? Number(itemForm.totalPrice) : qty * uPrice;
+    const qty = Number(itemForm.quantity);
+    const uPrice = Number(itemForm.unitPrice);
+    const enteredTotal = Number(itemForm.totalPrice);
+    const minAlert = Number(itemForm.minQuantityAlert);
+    const category = categories.find((candidate) => candidate.name === targetCategory);
+
+    if (!category) {
+      setItemErrorMsg("A categoria selecionada não existe mais.");
+      return;
+    }
+    if (!category.subcategories.includes(targetSubcategory)) {
+      setItemErrorMsg("Selecione uma subcategoria válida para a categoria.");
+      return;
+    }
+    if (!Number.isInteger(qty) || qty < 0) {
+      setItemErrorMsg("A quantidade deve ser um número inteiro igual ou maior que zero.");
+      return;
+    }
+    if (!Number.isFinite(uPrice) || uPrice < 0 || !Number.isFinite(enteredTotal) || enteredTotal < 0) {
+      setItemErrorMsg("Os valores do item devem ser números iguais ou maiores que zero.");
+      return;
+    }
+    if (!Number.isInteger(minAlert) || minAlert < 0) {
+      setItemErrorMsg("O alerta mínimo deve ser um número inteiro igual ou maior que zero.");
+      return;
+    }
+
+    const tPrice = enteredTotal > 0 ? enteredTotal : qty * uPrice;
 
     const isDuplicate = items.some((it) => {
       if (editingItem && it.id === editingItem.id) return false;
@@ -527,7 +592,7 @@ export default function AdminDonations() {
               unitPrice: uPrice,
               totalPrice: tPrice,
               historicalTotalInvested: Math.max(existingInvested, tPrice),
-              minQuantityAlert: Number(itemForm.minQuantityAlert) || 0,
+              minQuantityAlert: minAlert,
               location: (itemForm.location || "").trim(),
             };
           }
@@ -546,7 +611,7 @@ export default function AdminDonations() {
         unitPrice: uPrice,
         totalPrice: tPrice,
         historicalTotalInvested: tPrice,
-        minQuantityAlert: Number(itemForm.minQuantityAlert) || 5,
+        minQuantityAlert: minAlert,
         location: itemForm.location?.trim() || "Santuário",
       };
       setItems([newItem, ...items]);
@@ -571,7 +636,16 @@ export default function AdminDonations() {
     const { item, type } = movementModal;
     if (!item) return;
 
-    const amount = Math.max(1, Number(movementForm.amount) || 1);
+    const amount = Number(movementForm.amount);
+    if (!Number.isInteger(amount) || amount < 1) {
+      setMovementError("Informe uma quantidade inteira maior que zero.");
+      return;
+    }
+    if (type !== "ENTRADA" && amount > item.quantity) {
+      setMovementError(`A saída não pode ultrapassar o saldo atual de ${item.quantity} ${item.unit}.`);
+      return;
+    }
+    setMovementError("");
     const newQuantity =
       type === "ENTRADA" ? item.quantity + amount : Math.max(0, item.quantity - amount);
 
@@ -1205,6 +1279,7 @@ export default function AdminDonations() {
                                   <Button
                                     size="sm"
                                     onClick={() => {
+                                      setMovementError("");
                                       setMovementModal({ isOpen: true, item, type: "ENTRADA" });
                                       setMovementForm({ amount: 1, reason: "Compra / Reposição", responsible: "Sacerdote" });
                                     }}
@@ -1217,6 +1292,7 @@ export default function AdminDonations() {
                                   <Button
                                     size="sm"
                                     onClick={() => {
+                                      setMovementError("");
                                       setMovementModal({ isOpen: true, item, type: "SAIDA_USO" });
                                       setMovementForm({ amount: 1, reason: "Uso em Ritual", responsible: "Sacerdote" });
                                     }}
@@ -1617,6 +1693,7 @@ export default function AdminDonations() {
                 <span className="text-[10px] text-amber-300/80 mt-1 block">
                   * Ao alterar os nomes das subcategorias, os itens já cadastrados serão atualizados automaticamente.
                 </span>
+                {categoryError && <p className="mt-2 text-xs text-red-400">{categoryError}</p>}
               </div>
             </div>
 
@@ -1717,6 +1794,7 @@ export default function AdminDonations() {
                   onChange={(e) => setMovementForm({ ...movementForm, amount: parseInt(e.target.value, 10) || 1 })}
                   className="bg-black/60 border-primary/20 text-xs mt-1"
                 />
+                {movementError && <p className="mt-2 text-xs text-red-400">{movementError}</p>}
               </div>
 
               <div>

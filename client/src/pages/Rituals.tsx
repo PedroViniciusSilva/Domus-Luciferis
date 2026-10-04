@@ -1,14 +1,23 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   AlertTriangle,
   ArrowLeft,
+  Edit2,
   Home,
+  KeyRound,
+  Loader2,
+  Lock,
   MessageCircle,
   Play,
+  Plus,
+  Trash2,
+  Unlock,
+  Upload,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 
 
@@ -78,7 +87,186 @@ const RITUALS_DATA: RitualItem[] = [
 
 export default function Rituals() {
   const [, setLocation] = useLocation();
+  const [rituals, setRituals] = useState<RitualItem[]>(() => {
+    const saved = localStorage.getItem("domus_rituals");
+    if (!saved) return RITUALS_DATA;
+
+    try {
+      const parsed: RitualItem[] = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed : RITUALS_DATA;
+    } catch {
+      return RITUALS_DATA;
+    }
+  });
   const [expandedMedia, setExpandedMedia] = useState<RitualItem | null>(null);
+  const [isAdmin, setIsAdmin] = useState(() => Boolean(sessionStorage.getItem("domus_admin_token")));
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [adminPasswordInput, setAdminPasswordInput] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordMessage, setPasswordMessage] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [showRitualModal, setShowRitualModal] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [ritualForm, setRitualForm] = useState<Partial<RitualItem>>({
+    title: "",
+    categoryLabel: "",
+    price: "",
+    shortDescription: "",
+    mediaType: "image",
+    mediaUrl: "",
+  });
+
+  useEffect(() => {
+    localStorage.setItem("domus_rituals", JSON.stringify(rituals));
+  }, [rituals]);
+
+  async function handleLoginAdmin() {
+    try {
+      const response = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: adminPasswordInput.trim() }),
+      });
+      if (!response.ok) throw new Error();
+      const data = await response.json();
+      sessionStorage.setItem("domus_admin_token", data.token);
+      setIsAdmin(true);
+      setShowAuthModal(false);
+      setAdminPasswordInput("");
+      setAuthError("");
+    } catch {
+      setAuthError("Senha de administrador incorreta.");
+    }
+  }
+
+  function handleLogoutAdmin() {
+    setIsAdmin(false);
+    sessionStorage.removeItem("domus_admin_token");
+  }
+
+  async function handleChangePassword() {
+    setPasswordMessage("");
+    if (newPassword !== confirmPassword) {
+      setPasswordMessage("A confirmação da nova senha não confere.");
+      return;
+    }
+
+    const response = await fetch("/api/admin/change-password", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${sessionStorage.getItem("domus_admin_token") || ""}`,
+      },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      setPasswordMessage(data.message || "Não foi possível alterar a senha.");
+      return;
+    }
+
+    sessionStorage.setItem("domus_admin_token", data.token);
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordMessage(data.message);
+  }
+
+  function openNewRitual() {
+    setEditingId(null);
+    setFormError("");
+    setRitualForm({
+      title: "",
+      categoryLabel: "",
+      price: "",
+      shortDescription: "",
+      mediaType: "image",
+      mediaUrl: "",
+    });
+    setShowRitualModal(true);
+  }
+
+  function openEditRitual(ritual: RitualItem) {
+    setEditingId(ritual.id);
+    setFormError("");
+    setRitualForm(ritual);
+    setShowRitualModal(true);
+  }
+
+  function handleMediaUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setFormError("");
+    const mediaType = file.type.startsWith("video/") ? "video" : "image";
+    if (mediaType === "video") {
+      setRitualForm((previous) => ({
+        ...previous,
+        mediaType,
+        mediaUrl: URL.createObjectURL(file),
+      }));
+      setIsUploading(false);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setRitualForm((previous) => ({
+        ...previous,
+        mediaType,
+        mediaUrl: typeof reader.result === "string" ? reader.result : "",
+      }));
+      setIsUploading(false);
+    };
+    reader.onerror = () => {
+      setFormError("Não foi possível carregar a imagem.");
+      setIsUploading(false);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function saveRitual() {
+    const title = ritualForm.title?.trim() || "";
+    const categoryLabel = ritualForm.categoryLabel?.trim() || "";
+    const price = ritualForm.price?.trim() || "";
+    const shortDescription = ritualForm.shortDescription?.trim() || "";
+    const mediaUrl = ritualForm.mediaUrl?.trim() || "";
+
+    if (!title || !categoryLabel || !price || !shortDescription || !mediaUrl) {
+      setFormError("Preencha título, categoria, valor, descrição e mídia.");
+      return;
+    }
+
+    const nextRitual: RitualItem = {
+      id: editingId || `ritual-${Date.now()}`,
+      title,
+      categoryLabel,
+      price,
+      shortDescription,
+      mediaType: ritualForm.mediaType === "video" ? "video" : "image",
+      mediaUrl,
+    };
+
+    setRituals((current) =>
+      editingId
+        ? current.map((ritual) => (ritual.id === editingId ? nextRitual : ritual))
+        : [nextRitual, ...current]
+    );
+    setShowRitualModal(false);
+    setEditingId(null);
+  }
+
+  function deleteRitual(ritual: RitualItem) {
+    if (!confirm(`Deseja excluir o ritual "${ritual.title}"?`)) return;
+    setRituals((current) => current.filter((item) => item.id !== ritual.id));
+    if (expandedMedia?.id === ritual.id) setExpandedMedia(null);
+  }
 
   function getWhatsAppUrl(ritualTitle: string) {
     const text = encodeURIComponent(
@@ -90,25 +278,71 @@ export default function Rituals() {
   return (
     <div className="container mx-auto px-4 py-16">
       {/* Barra de navegação superior: Voltar e Home */}
-      <div className="mb-8 flex gap-3">
-        <Button
-          onClick={() => window.history.back()}
-          variant="ghost"
-          size="sm"
-          className="border border-primary/20 text-primary hover:bg-primary/10"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar
-        </Button>
-        <Button
-          onClick={() => setLocation("/")}
-          variant="ghost"
-          size="sm"
-          className="border border-primary/20 text-primary hover:bg-primary/10"
-        >
-          <Home className="mr-2 h-4 w-4" />
-          Home
-        </Button>
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex gap-3">
+          <Button
+            onClick={() => window.history.back()}
+            variant="ghost"
+            size="sm"
+            className="border border-primary/20 text-primary hover:bg-primary/10"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar
+          </Button>
+          <Button
+            onClick={() => setLocation("/")}
+            variant="ghost"
+            size="sm"
+            className="border border-primary/20 text-primary hover:bg-primary/10"
+          >
+            <Home className="mr-2 h-4 w-4" />
+            Home
+          </Button>
+        </div>
+
+        {isAdmin ? (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={openNewRitual}
+              size="sm"
+              className="bg-primary text-black font-cinzel text-xs uppercase"
+            >
+              <Plus className="mr-1.5 h-4 w-4" /> Novo ritual
+            </Button>
+            <Button
+              onClick={() => {
+                setPasswordMessage("");
+                setShowPasswordModal(true);
+              }}
+              variant="outline"
+              size="sm"
+              className="border-primary/30 text-primary"
+            >
+              <KeyRound className="mr-1.5 h-3.5 w-3.5" /> Alterar senha
+            </Button>
+            <Button
+              onClick={handleLogoutAdmin}
+              variant="outline"
+              size="sm"
+              className="border-red-500/30 text-red-400"
+            >
+              <Unlock className="mr-1.5 h-3.5 w-3.5" /> Sair
+            </Button>
+          </div>
+        ) : (
+          <Button
+            onClick={() => {
+              setAuthError("");
+              setAdminPasswordInput("");
+              setShowAuthModal(true);
+            }}
+            variant="outline"
+            size="sm"
+            className="border-primary/20 text-zinc-400 hover:text-primary"
+          >
+            <Lock className="mr-1.5 h-3.5 w-3.5" /> Acesso Admin
+          </Button>
+        )}
       </div>
 
       {/* Cabeçalho da página */}
@@ -138,12 +372,36 @@ export default function Rituals() {
 
       {/* Grid de Rituais */}
       <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-        {RITUALS_DATA.map((ritual) => (
+        {rituals.map((ritual) => (
           <Card
             key={ritual.id}
-            className="flex flex-col justify-between overflow-hidden border-primary/20 bg-zinc-950/80 backdrop-blur transition-all duration-300 hover:border-primary/60 hover:shadow-[0_0_20px_rgba(212,175,55,0.15)]"
+            className="relative flex flex-col justify-between overflow-hidden border-primary/20 bg-zinc-950/80 backdrop-blur transition-all duration-300 hover:border-primary/60 hover:shadow-[0_0_20px_rgba(212,175,55,0.15)]"
           >
             <div>
+              {isAdmin && (
+                <div className="absolute right-2 top-2 z-30 flex gap-1 rounded bg-black/80 p-1">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => openEditRitual(ritual)}
+                    className="h-7 w-7 text-zinc-300 hover:text-primary"
+                    title="Editar ritual"
+                    aria-label="Editar ritual"
+                  >
+                    <Edit2 className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => deleteRitual(ritual)}
+                    className="h-7 w-7 text-zinc-300 hover:text-red-400"
+                    title="Excluir ritual"
+                    aria-label="Excluir ritual"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              )}
               {/* Quadrante da Imagem clicável para expandir */}
               <div
                 onClick={() => setExpandedMedia(ritual)}
@@ -244,6 +502,7 @@ export default function Rituals() {
                   className="max-h-[75vh] max-w-full rounded object-contain"
                 />
               )}
+
               <div className="w-full pt-3 text-center">
                 <h3 className="font-cinzel text-lg text-primary">
                   {expandedMedia.title}
@@ -254,6 +513,116 @@ export default function Rituals() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {showAuthModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
+          <Card className="w-full max-w-sm border-primary/40 bg-zinc-950 p-6 text-zinc-200">
+            <div className="mb-4 flex items-center justify-between border-b border-primary/20 pb-3">
+              <h3 className="font-cinzel text-sm font-bold uppercase text-primary">
+                Acesso Admin dos Rituais
+              </h3>
+              <button type="button" onClick={() => setShowAuthModal(false)} className="text-zinc-400 hover:text-white">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <Input
+              type="password"
+              value={adminPasswordInput}
+              onChange={(event) => setAdminPasswordInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") handleLoginAdmin();
+              }}
+              placeholder="Senha de administrador"
+              className="bg-black/60 border-primary/20"
+            />
+            {authError && <p className="mt-2 text-xs text-red-400">{authError}</p>}
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowAuthModal(false)}>Cancelar</Button>
+              <Button onClick={handleLoginAdmin} className="bg-primary text-black">Entrar</Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
+          <Card className="w-full max-w-md border-primary/40 bg-zinc-950 p-6 text-zinc-200">
+            <h3 className="mb-5 font-cinzel text-lg text-primary">Alterar senha</h3>
+            <div className="space-y-3">
+              <Input type="password" placeholder="Senha atual" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
+              <Input type="password" placeholder="Nova senha (mínimo 8 caracteres)" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
+              <Input type="password" placeholder="Confirme a nova senha" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
+              {passwordMessage && <p className="text-xs text-primary">{passwordMessage}</p>}
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setShowPasswordModal(false)}>Cancelar</Button>
+                <Button onClick={handleChangePassword} className="bg-primary text-black">Salvar nova senha</Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {showRitualModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
+          <Card className="max-h-[90vh] w-full max-w-lg overflow-y-auto border-primary/40 bg-zinc-950 p-6 text-zinc-200">
+            <div className="mb-4 flex items-center justify-between border-b border-primary/20 pb-3">
+              <h3 className="font-cinzel text-lg text-primary">
+                {editingId ? "Editar ritual" : "Novo ritual"}
+              </h3>
+              <button type="button" onClick={() => setShowRitualModal(false)} className="text-zinc-400 hover:text-white">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            {formError && <p className="mb-3 rounded border border-red-500/30 bg-red-500/10 p-2 text-xs text-red-300">{formError}</p>}
+            <div className="space-y-3">
+              <Input placeholder="Nome do ritual *" value={ritualForm.title || ""} onChange={(event) => setRitualForm({ ...ritualForm, title: event.target.value })} />
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Input placeholder="Categoria *" value={ritualForm.categoryLabel || ""} onChange={(event) => setRitualForm({ ...ritualForm, categoryLabel: event.target.value })} />
+                <Input placeholder="Valor (ex.: R$ 700,00) *" value={ritualForm.price || ""} onChange={(event) => setRitualForm({ ...ritualForm, price: event.target.value })} />
+              </div>
+              <textarea
+                placeholder="Descrição curta *"
+                value={ritualForm.shortDescription || ""}
+                onChange={(event) => setRitualForm({ ...ritualForm, shortDescription: event.target.value })}
+                className="min-h-24 w-full rounded-md border border-primary/20 bg-black/60 p-2 text-sm text-zinc-200 outline-none focus:border-primary"
+              />
+              <select
+                value={ritualForm.mediaType || "image"}
+                onChange={(event) => setRitualForm({ ...ritualForm, mediaType: event.target.value as RitualItem["mediaType"] })}
+                className="h-10 w-full rounded-md border border-primary/20 bg-black/60 px-3 text-sm text-zinc-200"
+              >
+                <option value="image">Imagem</option>
+                <option value="video">Vídeo</option>
+              </select>
+              <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-cinzel uppercase text-primary hover:bg-primary/20">
+                {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                {isUploading ? "Carregando..." : "Escolher imagem ou vídeo"}
+                <input type="file" accept={ritualForm.mediaType === "video" ? "video/*" : "image/*"} onChange={handleMediaUpload} className="hidden" disabled={isUploading} />
+              </label>
+              <Input
+                placeholder={ritualForm.mediaType === "video" ? "Ou cole a URL do vídeo" : "Ou cole a URL da imagem"}
+                value={ritualForm.mediaUrl || ""}
+                onChange={(event) => setRitualForm({ ...ritualForm, mediaUrl: event.target.value })}
+              />
+              {ritualForm.mediaUrl && (
+                <div className="overflow-hidden rounded border border-primary/20 bg-black p-2">
+                  {ritualForm.mediaType === "video" ? (
+                    <video src={ritualForm.mediaUrl} controls className="max-h-56 w-full object-contain" />
+                  ) : (
+                    <img src={ritualForm.mediaUrl} alt="Prévia do ritual" className="max-h-56 w-full object-contain" />
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowRitualModal(false)}>Cancelar</Button>
+              <Button onClick={saveRitual} disabled={isUploading} className="bg-primary text-black">
+                {editingId ? "Salvar alterações" : "Adicionar ritual"}
+              </Button>
+            </div>
+          </Card>
         </div>
       )}
 

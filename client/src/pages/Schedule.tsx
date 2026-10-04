@@ -790,6 +790,8 @@ export default function Schedule() {
                       setActiveModal("video");
                     }}
                     className="h-7 w-7 text-zinc-300 hover:text-primary"
+                    title="Editar foto"
+                    aria-label="Editar foto"
                   >
                     <Edit2 className="h-3.5 w-3.5" />
                   </Button>
@@ -1287,20 +1289,32 @@ export default function Schedule() {
                 </div>
               </div>
 
+              <div>
+                <label className="text-xs text-zinc-400 block mb-1">
+                  {activeModal === "video"
+                    ? "Ou cole a URL direta do vídeo"
+                    : "Ou cole a URL direta da imagem"}
+                </label>
+                <Input
+                  value={mediaForm.mediaUrl || ""}
+                  onChange={(e) => {
+                    setFormValidationMsg(null);
+                    setMediaForm({ ...mediaForm, mediaUrl: e.target.value });
+                  }}
+                  placeholder={
+                    activeModal === "video"
+                      ? "https://exemplo.com/video.mp4"
+                      : "https://exemplo.com/imagem.jpg"
+                  }
+                  className="bg-black/60 border-primary/20 text-xs"
+                />
+              </div>
+
               {activeModal === "video" && (
                 <div>
-                  <label className="text-xs text-zinc-400 block mb-1">
-                    Opção 2: Ou Cole a URL Direta do Vídeo
-                  </label>
-                  <Input
-                    value={mediaForm.mediaUrl || ""}
-                    onChange={(e) => {
-                      setFormValidationMsg(null);
-                      setMediaForm({ ...mediaForm, mediaUrl: e.target.value });
-                    }}
-                    placeholder="https://exemplo.com/video.mp4"
-                    className="bg-black/60 border-primary/20 text-xs"
-                  />
+                  <span className="text-[10px] text-zinc-500">
+                    O arquivo escolhido ou a URL substitui a mídia atual ao salvar.
+                  </span>
                 </div>
               )}
 
@@ -1374,8 +1388,12 @@ export default function Schedule() {
                 {isUploading
                   ? "Carregando..."
                   : editingId
-                  ? "Substituir Arquivo"
-                  : "Salvar Arquivo"}
+                  ? activeModal === "photo"
+                    ? "Salvar alterações da foto"
+                    : "Salvar alterações do vídeo"
+                  : activeModal === "photo"
+                  ? "Salvar foto"
+                  : "Salvar vídeo"}
               </Button>
             </div>
           </Card>

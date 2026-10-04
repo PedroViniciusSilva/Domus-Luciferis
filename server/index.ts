@@ -59,6 +59,7 @@ type DonationRecord = {
   phone: string;
   email: string;
   cpf: string;
+  notes: string;
   address: {
     street: string;
     number: string;
@@ -72,6 +73,7 @@ type DonationPayload = {
   phone: string;
   email: string;
   cpf: string;
+  notes?: string;
   address: {
     street: string;
     number: string;
@@ -125,6 +127,7 @@ function buildDonationRecord(body: Partial<DonationPayload>, existing?: Donation
     phone: sanitizeText(body.phone, 32),
     email: sanitizeText(body.email, 120).toLowerCase(),
     cpf: formatCpf(sanitizeText(body.cpf, 20)),
+    notes: sanitizeText(body.notes, 1000),
     address: {
       street: sanitizeText(address.street),
       number: sanitizeText(address.number, 20),
@@ -160,6 +163,7 @@ async function readDonations() {
       phone: donation.phone || "",
       email: donation.email || "",
       cpf: donation.cpf || "",
+      notes: donation.notes || "",
       address: {
         street: donation.address?.street || "",
         number: donation.address?.number || "",
@@ -206,6 +210,7 @@ function toCsv(donations: DonationRecord[]) {
     "Numero",
     "Bairro",
     "Cidade",
+    "Observacoes",
   ];
   const rows = donations.map((donation) => [
     donation.createdAt,
@@ -218,6 +223,7 @@ function toCsv(donations: DonationRecord[]) {
     donation.address.number,
     donation.address.neighborhood,
     donation.address.city,
+    donation.notes || "",
   ]);
 
   return [
@@ -256,6 +262,12 @@ async function startServer() {
 
     if (newPassword.length < 8) {
       return res.status(400).json({ message: "A nova senha deve ter pelo menos 8 caracteres." });
+    }
+
+    if (process.env.ADMIN_TOKEN) {
+      return res.status(400).json({
+        message: "A senha é gerenciada pela variável ADMIN_TOKEN da hospedagem.",
+      });
     }
 
     saveAdminToken(newPassword);
@@ -401,7 +413,9 @@ async function startServer() {
     res.sendFile(path.join(staticPath, "index.html"));
   });
 
-  const port = Number(process.env.PORT || (process.env.NODE_ENV === "production" ? 3000 : 3001));
+  const isProduction = process.env.NODE_ENV === "production";
+  const configuredPort = isProduction ? process.env.PORT : process.env.API_PORT;
+  const port = Number(configuredPort || (isProduction ? 3000 : 3001));
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
